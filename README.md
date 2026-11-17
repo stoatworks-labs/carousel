@@ -9,9 +9,9 @@
 > **own** model of the lamps: its own filament ODE integrated by Dormand–Prince, its own
 > Planck sum read from the CIE table at run time. Every frame of a cut and a dissolve matches
 > it within a derived tolerance; the closest frame is **2.4e-7** off in gain against 5.5e-6.
-> The colour temperature read back out of the picture is the filament's to **0.0005 K**. A voltage dissolve's middle sags to
-> **0.1139** of one lamp's light at **2457 K**; a cut at zero time leaves the frame at the cut
-> **bit for bit** the frame before it. One projector alone at rest gives its slide back with
+> The colour temperature read back out of the picture is the filament's to **0.0005 K**. A
+> voltage dissolve's middle sags to **0.1139** of one lamp's light at **2457 K**; a cut at
+> zero time leaves the frame at the cut **bit for bit** the frame before it. One projector alone at rest gives its slide back with
 > **0** values different. **19** deliberately wrong versions of the plugin and **35**
 > one-character mutants of its GLSL and C++ are all caught. The lamp model, the shutter's
 > timing and the slide's warming time are **assumptions**: see [Status](#status).
@@ -20,7 +20,8 @@ Two Kodak slide projectors on a dissolve unit, for [Resolume](https://resolume.c
 Avenue, as an FFGL **mixer**, **SW Carousel**. The layer below is projector A's slide; the
 layer you set it on is projector B's. The layer's fader is the dissolve fader. Each lamp is a
 300 W tungsten filament that follows the dissolve unit's voltage through its thermal lag, so a
-dissolve sags and turns amber in the middle and even a cut dips through a warm half-second.
+dissolve sags and turns amber in the middle, and even a cut crosses through a dim, warm moment
+while one filament cools and the other heats.
 Change A and Change B run a one-second slide change: the shutter's dark gap, then a cold
 card-mounted slide drifting into focus as it warms.
 
@@ -51,7 +52,8 @@ None of this is drawn. It's two lamps, a shutter and a piece of film.
   voltage and the screen falls to 0.1139 of one lamp's light at 2457 K, from 3350 K at either
   end. US 3,282,155 shaped its dissolve "to eliminate reddening".
 - **A light-shaped dissolve doesn't sag, but still warms**: at the midpoint both lamps at
-  0.818 of their voltage give exactly one lamp's light between them, at 3077 K.
+  0.818 of their voltage give one lamp's light between them (1.0000002 of it, measured), at
+  3077 K.
 - **A cut is not a cut.** At zero dissolve time the voltages switch at once, but the filament
   can't: one frame after a cut at 60 fps, the incoming lamp gives 2.09e-5 of its light and the
   outgoing one still 0.798 of its own; the incoming one passes half its light at the 13th
