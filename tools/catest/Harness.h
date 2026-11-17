@@ -426,6 +426,74 @@ struct Target
 	}
 };
 
+/// What THIS rasteriser's shader fetch returns for each unorm8 value 0..255,
+/// read through a pass-through shader into a float target. GL asks for c/255
+/// and allows a conversion error; Apple's GPU renderer returns c/255 correctly
+/// rounded and its software renderer does not (`--unchanged` prints how many
+/// differ). Empty if the probe could not run.
+std::vector< float > unormDecode()
+{
+	static const char* vs = "#version 410 core\n"
+	                        "void main() { vec2 p = vec2( ( gl_VertexID << 1 ) & 2, gl_VertexID & 2 ); gl_Position = vec4( p * 2.0 - 1.0, 0.0, 1.0 ); }\n";
+	static const char* fs = "#version 410 core\n"
+	                        "uniform sampler2D t; out vec4 o;\n"
+	                        "void main() { o = texelFetch( t, ivec2( gl_FragCoord.xy ), 0 ); }\n";
+	auto compile = []( GLenum kind, const char* text ) {
+		const GLuint shader = glCreateShader( kind );
+		glShaderSource( shader, 1, &text, nullptr );
+		glCompileShader( shader );
+		GLint ok = 0;
+		glGetShaderiv( shader, GL_COMPILE_STATUS, &ok );
+		return ok ? shader : 0u;
+	};
+	const GLuint v = compile( GL_VERTEX_SHADER, vs ), f = compile( GL_FRAGMENT_SHADER, fs );
+	std::vector< float > table;
+	if( v && f )
+	{
+		const GLuint program = glCreateProgram();
+		glAttachShader( program, v );
+		glAttachShader( program, f );
+		glLinkProgram( program );
+		GLint ok = 0;
+		glGetProgramiv( program, GL_LINK_STATUS, &ok );
+		if( ok )
+		{
+			Image bytes( 256 * 4 );
+			for( int c = 0; c < 256; ++c )
+				for( int k = 0; k < 4; ++k )
+					bytes[ static_cast< size_t >( c * 4 + k ) ] = static_cast< unsigned char >( c );
+			const GLuint input = makeTexture( 256, 1, false, bytes.data() );
+			Target out;
+			out.Init( 256, 1, true );
+			out.Begin();
+			GLuint vao = 0;
+			glGenVertexArrays( 1, &vao );
+			glBindVertexArray( vao );
+			glUseProgram( program );
+			glActiveTexture( GL_TEXTURE0 );
+			glBindTexture( GL_TEXTURE_2D, input );
+			glUniform1i( glGetUniformLocation( program, "t" ), 0 );
+			glDrawArrays( GL_TRIANGLES, 0, 3 );
+			glBindTexture( GL_TEXTURE_2D, 0 );
+			glUseProgram( 0 );
+			glBindVertexArray( 0 );
+			glDeleteVertexArrays( 1, &vao );
+			const ImageF got = out.PixelsF();
+			for( int c = 0; c < 256; ++c )
+				table.push_back( got[ static_cast< size_t >( c * 4 ) ] );
+			out.Release();
+			glDeleteTextures( 1, &input );
+			glBindFramebuffer( GL_FRAMEBUFFER, 0 );
+		}
+		glDeleteProgram( program );
+	}
+	if( v )
+		glDeleteShader( v );
+	if( f )
+		glDeleteShader( f );
+	return table;
+}
+
 //---------------------------------------------------------------------------
 // The mixer's rig: SW Carousel, TWO input textures and an output, each at its
 // own size, and a synthetic clock. inputTextures[0] is Dest (projector A),

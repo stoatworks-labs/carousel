@@ -525,6 +525,67 @@ void mixerCheck( int outW, int outH, int fault )
 	       "the host's framebuffer and viewport are as they were" );
 }
 
+/// An input at another size fills the frame: output pixel p samples it at
+/// ( p + 0.5 ) size / out - 0.5, bilinear over the four texels' decoded,
+/// premultiplied light, clamped to the used size; the padding never read.
+/// Each projector alone at rated, glass-mounted (no blur), its slide at 0.6
+/// and at 1.37 of the output, padded, against the harness's own resample.
+void resampleCheck( int W, int H, int fault )
+{
+	for( int which = 0; which < 2; ++which )
+		for( double scale : { 0.6, 1.37 } )
+		{
+			const int w = static_cast< int >( std::lround( W * scale ) ), h = static_cast< int >( std::lround( H * scale ) );
+			MixRig rig;
+			const InputSpec mine = InputSpec::Padded( w, h, w + 16, h + 16 ), full = InputSpec::Exact( W, H );
+			if( !rig.Init( W, H, which == 0 ? mine : full, which == 1 ? mine : full, true, fault ) )
+				return;
+			rig.startSeconds = kStart;
+			const Image slide = slideCard( w, h, which == 1, true );
+			const Image other = slideCard( W, H, which == 0, true );
+			rig.UploadA( which == 0 ? slide : other );
+			rig.UploadB( which == 1 ? slide : other );
+			rig.Set( "Opacity", static_cast< float >( which ) );
+			rig.Set( "Mounts", 1.0f );
+			for( int k = 0; k < 4; ++k )
+				rig.Step();
+			const ImageF out = rig.PixelsF();
+			//The GPU's sample position: ( p + 0.5 ) x size exact, a division
+			//(2.5 ULP) and a subtraction (1 ULP), at a position up to w.
+			const double dq = 3.5 * std::ldexp( 1.0, static_cast< int >( std::floor( std::log2( std::max( w, h ) ) ) ) - 23 );
+			auto texel = [ & ]( int x, int y, int c ) {
+				x                = std::clamp( x, 0, w - 1 );
+				y                = std::clamp( y, 0, h - 1 );
+				const size_t i   = at4( w, x, y );
+				const double rgb = slide[ i + static_cast< size_t >( c ) ] / 255.0 * ( slide[ i + 3 ] / 255.0 );
+				return srgbToLinear( rgb );
+			};
+			double worst = 0.0;
+			for( int y = 0; y < H; ++y )
+				for( int x = 0; x < W; ++x )
+				{
+					const double qx = ( x + 0.5 ) * w / W - 0.5, qy = ( y + 0.5 ) * h / H - 0.5;
+					const int x0 = static_cast< int >( std::floor( qx ) ), y0 = static_cast< int >( std::floor( qy ) );
+					const double fx = qx - x0, fy = qy - y0;
+					for( int c = 0; c < 3; ++c )
+					{
+						const double t00 = texel( x0, y0, c ), t10 = texel( x0 + 1, y0, c ), t01 = texel( x0, y0 + 1, c ), t11 = texel( x0 + 1, y0 + 1, c );
+						const double v   = ( t00 + ( t10 - t00 ) * fx ) * ( 1.0 - fy ) + ( t01 + ( t11 - t01 ) * fx ) * fy;
+						const double hi  = std::max( std::max( t00, t10 ), std::max( t01, t11 ) );
+						const double lo  = std::min( std::min( t00, t10 ), std::min( t01, t11 ) );
+						//The output's bound, the position's (the spread of the
+						//four texels times its error, each axis), and the
+						//harness's double against the GPU's float rgb x a.
+						const double dv  = 2.0 * ( hi - lo ) * dq + 3.0 * kFloatUlp * hi * 2.4;
+						const double tol = 3.0 * ( outputBound( v, 0, true ) + encodeSlope( std::max( v, 1e-12 ) ) * dv );
+						const double got = out[ at4( W, x, y ) + static_cast< size_t >( c ) ];
+						worst            = worse( worst, std::fabs( got - linearToSrgb( v ) ) / tol );
+					}
+				}
+			Check( worst <= 1.0, std::string( which ? "B" : "A" ) + fmt( " at %.0fx%.0f, padded, alone at rated: every pixel is the bilinear resample, worst %.3f of its tolerance", w, h, worst ) );
+		}
+}
+
 void guardCheck()
 {
 	MixRig rig;
@@ -545,17 +606,26 @@ int runMixer()
 {
 	std::printf( "the guards, two inputs at two sizes with padding, the GL state\n" );
 	guardCheck();
-	atBothRasters( []( int w, int h, int f ) { mixerCheck( w, h, f ); },
-	               { { kFaultLeaveBound, "a texture left bound" }, { kFaultSizeSwap, "B read at A's size" } } );
+	atBothRasters(
+		[]( int w, int h, int f ) {
+			mixerCheck( w, h, f );
+			resampleCheck( w, h, f );
+		},
+		{ { kFaultLeaveBound, "a texture left bound" }, { kFaultSizeSwap, "B read at A's size" } } );
 	return failures == 0 ? 0 : 1;
 }
 
 //---------------------------------------------------------------------------
 // --unchanged: at rest, one projector alone at rated is its slide over black,
-// byte for byte and float for float.
+// byte for byte and float for float. "Float for float" is against THIS
+// rasteriser's own unorm8 decode (unormDecode): the plugin multiplies what
+// its fetch returns by the alpha and nothing else, and the fetch is the
+// rasteriser's. Apple's GPU decodes c/255 correctly rounded; its software
+// renderer is 1 ulp off for some values, and that is printed, not hidden.
 //---------------------------------------------------------------------------
 void unchangedCheck( int W, int H, int fault )
 {
+	static bool decodeReported = false;
 	for( int which = 0; which < 2; ++which )
 		for( int alpha = 0; alpha < 2; ++alpha )
 			for( int floatOut = 0; floatOut < 2; ++floatOut )
@@ -574,14 +644,34 @@ void unchangedCheck( int W, int H, int fault )
 				size_t differ      = 0;
 				if( floatOut )
 				{
+					const std::vector< float > decode = unormDecode();
+					if( decode.size() != 256 )
+					{
+						Check( false, "the unorm8 decode probe ran" );
+						return;
+					}
+					if( !decodeReported )
+					{
+						int off        = 0;
+						double offUlps = 0.0;
+						for( int c = 1; c < 256; ++c )
+						{
+							const float exact = static_cast< float >( c ) / 255.0f;
+							off += decode[ static_cast< size_t >( c ) ] != exact;
+							offUlps = worse( offUlps, std::fabs( static_cast< double >( decode[ static_cast< size_t >( c ) ] ) - exact ) / ulpAt( exact ) );
+						}
+						off += decode[ 0 ] != 0.0f;
+						std::printf( "  (this rasteriser's unorm8 decode: %d of 256 values differ from c/255 correctly rounded, worst %.3g ulp)\n", off, offUlps );
+						decodeReported = true;
+					}
 					const ImageF out = rig.PixelsF();
 					for( size_t i = 0; i < out.size(); i += 4 )
 					{
-						//rgb x a in float, as the GPU forms it.
-						const float af = static_cast< float >( slide[ i + 3 ] ) / 255.0f;
+						//rgb x a in float, as the shader forms it from its fetch.
+						const float af = decode[ slide[ i + 3 ] ];
 						for( int c = 0; c < 3; ++c )
 						{
-							const float v = ( static_cast< float >( slide[ i + static_cast< size_t >( c ) ] ) / 255.0f ) * af;
+							const float v = decode[ slide[ i + static_cast< size_t >( c ) ] ] * af;
 							differ += std::memcmp( &out[ i + static_cast< size_t >( c ) ], &v, sizeof( float ) ) != 0;
 						}
 						differ += out[ i + 3 ] != 1.0f;
@@ -1898,10 +1988,15 @@ std::map< std::string, Track > loadScript( const std::string& path, std::string&
 	return tracks;
 }
 
+/// A track's value at a frame; NaN before a STEPPED track's first key, so a
+/// button cued at frame 1 is not pressed at frame 0. A ramped track holds
+/// its first key before it.
 float valueAt( const Track& track, int frame, bool ramps )
 {
 	if( track.empty() )
-		return 0.0f;
+		return std::nanf( "" );
+	if( !ramps && frame < track.front().first )
+		return std::nanf( "" );
 	if( frame <= track.front().first )
 		return track.front().second;
 	if( frame >= track.back().first )
@@ -2035,7 +2130,11 @@ int runPipe( int width, int height, int srcWidth, int srcHeight, double fps, con
 		flipRows( destIn, destUp, width, height );
 		rig.UploadA( destUp );
 		for( const Automation& track : automation )
-			rig.plugin.SetFloatParameter( track.id, valueAt( track.track, index, track.ramps ) );
+		{
+			const float v = valueAt( track.track, index, track.ramps );
+			if( !std::isnan( v ) )
+				rig.plugin.SetFloatParameter( track.id, v );
+		}
 		if( !rig.Step() )
 		{
 			std::fprintf( stderr, "ProcessOpenGL failed at frame %d\n", index );
@@ -2252,7 +2351,11 @@ int main( int argc, char** argv )
 		for( int f = 0; f < std::max( 1, frames ); ++f )
 		{
 			for( const Automation& track : automation )
-				rig.plugin.SetFloatParameter( track.id, valueAt( track.track, f, track.ramps ) );
+			{
+				const float v = valueAt( track.track, f, track.ramps );
+				if( !std::isnan( v ) )
+					rig.plugin.SetFloatParameter( track.id, v );
+			}
 			ok = rig.Step() && ok;
 		}
 		if( !ok || !writePng( outPath, width, height, rig.Pixels() ) )
