@@ -162,6 +162,8 @@ if(CAROUSEL_BUILD_TOOLS AND APPLE)
     add_executable(catest tools/catest/main.cpp)
     # zlib ships with the OS, which is why the PNG writer is fifty lines
     # rather than a vendored dependency.
+    # The harness's reference reads the CIE table from the source tree.
+    target_compile_definitions(catest PRIVATE CAROUSEL_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}")
     target_link_libraries(catest PRIVATE carousel_core z
         "-framework OpenGL"
         "-framework AppKit"
