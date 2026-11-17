@@ -14,3 +14,6 @@
 
 # Cross-compiled Windows output
 /out-windows/
+
+# Python
+__pycache__/
