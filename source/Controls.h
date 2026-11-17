@@ -24,7 +24,7 @@ inline constexpr double kTimeDefault = 2.0;///< Rollei Twin MSC 300P's default; 
 /// smallest that halves a freshly changed demo clip's detail at 1080p
 /// (tools/clips.py, AGENTS.md "Defaults").
 inline constexpr double kPopMaxMm     = 1.0;
-inline constexpr double kPopDefaultMm = 0.4;
+inline constexpr double kPopDefaultMm = 0.55;///< tools/clips.py: the median of 15 Shop74 clips at 1080p
 
 /// The lens: the Ektagraphic's 102 mm f/2.8 (Kodak SM4530-1; the 850H's
 /// EKTANAR C), and the slide's long side, 36 mm (the 24 x 36 mm aperture),

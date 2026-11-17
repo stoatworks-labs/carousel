@@ -356,7 +356,7 @@ struct Ctl
 	bool light   = false;///< Curve = Light
 	bool low     = false;///< Lamp = Low
 	bool glass   = false;
-	double popMm = 0.4;
+	double popMm = 0.55;
 };
 
 struct Out
