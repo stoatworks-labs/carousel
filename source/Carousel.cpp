@@ -67,7 +67,8 @@ bool compile( FFGLShader& shader, const std::string& fragment, const char* what 
 }
 
 /// The Gaussian's half-kernel, normalised over -radius .. radius.
-int gaussian( double sigma, float weights[ kMaxTaps + 1 ] )
+/// `dropLast` is the negative control kFaultKernelMass.
+int gaussian( double sigma, float weights[ kMaxTaps + 1 ], bool dropLast )
 {
 	const int radius = std::min( kMaxTaps, static_cast< int >( std::ceil( 4.0 * sigma ) ) );
 	double w[ kMaxTaps + 1 ] = {};
@@ -79,6 +80,8 @@ int gaussian( double sigma, float weights[ kMaxTaps + 1 ] )
 	}
 	for( int k = 0; k <= kMaxTaps; ++k )
 		weights[ k ] = k <= radius ? static_cast< float >( w[ k ] / sum ) : 0.0f;
+	if( dropLast && radius > 0 )
+		weights[ radius ] = 0.0f;
 	return radius;
 }
 
@@ -323,7 +326,7 @@ FFResult Carousel::ProcessOpenGL( ProcessOpenGLStruct* pGL )
 			return FF_FAIL;
 		}
 		blurred[ p ] = true;
-		radius[ p ]  = gaussian( o.sigmaPx, weights[ p ] );
+		radius[ p ]  = gaussian( o.sigmaPx, weights[ p ], ( fault & kFaultKernelMass ) != 0 );
 	}
 
 	//-----------------------------------------------------------------

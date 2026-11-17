@@ -83,6 +83,7 @@ enum Fault : int
 	kFaultGammaMix       = 1 << 15,///< shader: Linear Light's sum on code values -- --linear
 	kFaultLeaveBound     = 1 << 16,///< a texture left bound -- --mixer
 	kFaultSizeSwap       = 1 << 17,///< shader: B read at A's size -- --mixer
+	kFaultKernelMass     = 1 << 18,///< the Gaussian's outermost taps zeroed after normalising -- --pop
 };
 
 /// What the parameters ask for, in physical units.

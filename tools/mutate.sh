@@ -12,7 +12,7 @@
 # GLSL mutant, and only the named check run (it runs at 640x360 and 320x180)
 # under a time limit: a mutant can hang, and a timeout counts as caught.
 #
-#     tools/mutate.sh
+#     tools/mutate.sh [WORDS]    WORDS: only the mutants whose description has them
 #
 set -euo pipefail
 
@@ -40,7 +40,7 @@ MUTANTS=(
 	"source/Shaders.cpp|vec4 t = texelFetch( SlideB, p, 0 );|vec4 t = texelFetch( SlideA, p, 0 );|--unchanged|GLSL screen: B's exact path showing A's slide, B -> A"
 	"source/Shaders.cpp|if( ExactA != 0 )|if( ExactA == 0 )|--unchanged|GLSL screen: A's exact path whenever it is not asked for, ! -> ="
 	"source/Shaders.cpp|ivec2 sizeB = ( Fault & kFaultSizeSwap ) != 0 ? SizeA : SizeB;|ivec2 sizeB = ( Fault & kFaultSizeSwap ) == 0 ? SizeA : SizeB;|--mixer|GLSL screen: B read at A's size, ! -> ="
-	"source/Shaders.cpp|vec3 a      = resolve( BlurredA != 0 ? verticalA( p ) : slideAt( SlideA, SizeA, p ) );|vec3 a      = resolve( BlurredA == 0 ? verticalA( p ) : slideAt( SlideA, SizeA, p ) );|--lamp|GLSL screen: A's blur and sharp swapped, ! -> ="
+	"source/Shaders.cpp|vec3 a      = resolve( BlurredA != 0 ? verticalA( p ) : slideAt( SlideA, SizeA, p ) );|vec3 a      = resolve( BlurredA == 0 ? verticalA( p ) : slideAt( SlideA, SizeA, p ) );|--pop|GLSL screen: A's blur and sharp swapped, ! -> ="
 	"source/Shaders.cpp|GainA * a + GainB * b;|GainA * a + GainA * b;|--lamp|GLSL screen: B's light weighted by A's gain, B -> A"
 	"source/Shaders.cpp|return vec4( Linear != 0 ? decode( c ) : c, t.a );|return vec4( Linear == 0 ? decode( c ) : c, t.a );|--linear|GLSL texelOf: decoded only with Linear Light off, ! -> ="
 	"source/Shaders.cpp|return ( Fault & kFaultNoPremultiply ) != 0 ? v.rgb * v.a : v.rgb;|return ( Fault & kFaultNoPremultiply ) == 0 ? v.rgb * v.a : v.rgb;|--alpha|GLSL resolve: premultiplied twice, ! -> ="
@@ -77,9 +77,13 @@ ln -s "$REPO/external/ffgl" "$tree/external/ffgl"
 cmake -S "$tree" -B "$tree/build" -DCMAKE_BUILD_TYPE=Release -DCMAKE_OSX_ARCHITECTURES=arm64 >/dev/null
 cmake --build "$tree/build" --target catest -j6 >/dev/null 2>&1
 
+FILTER="${1:-}"
 caught=0
+tried=0
 for entry in "${MUTANTS[@]}"; do
 	IFS='|' read -r file original mutant check what <<<"$entry"
+	[[ -n "$FILTER" && "$what" != *"$FILTER"* ]] && continue
+	tried=$(( tried + 1 ))
 	# Every file back to the shipped text first, and its object deleted: make
 	# on macOS compares whole-second mtimes, and a file put back in the same
 	# second the last mutant's object was written looks up to date -- the
@@ -125,5 +129,5 @@ PY
 	fi
 done
 
-printf '\nmutants: %d, caught: %d\n' "${#MUTANTS[@]}" "$caught"
-[[ "$caught" -eq "${#MUTANTS[@]}" ]]
+printf '\nmutants: %d, caught: %d\n' "$tried" "$caught"
+[[ "$tried" -gt 0 && "$caught" -eq "$tried" ]]

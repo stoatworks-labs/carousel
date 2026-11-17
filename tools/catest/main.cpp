@@ -1194,9 +1194,10 @@ Spread measureSpread( const ImageF& img, int W, int H )
 /// exactly 0; carried into the variance through its moments, plus the
 /// kernel's weights' own float rounding (2 ( 2R + 1 ) ULP of the variance).
 /// Then to sigma. Three times it.
-double spreadBound( double sigma, double g, double mean, int R )
+double spreadBound( double sigma, double g, double mean, int R, int p )
 {
-	const double lo = srgbToLinear( kEdgeB[ 0 ].g / 255.0 ) * g, hi = srgbToLinear( kEdgeB[ 1 ].g / 255.0 ) * g;
+	const Rgb* edge = p == 1 ? kEdgeB : kEdgeA;
+	const double lo = srgbToLinear( edge[ 0 ].g / 255.0 ) * g, hi = srgbToLinear( edge[ 1 ].g / 255.0 ) * g;
 	const double oHi = linearToSrgb( hi );
 	const double eps = decodeSlope( oHi + kPowBound ) * outputBound( hi, R, true ) / ( hi - lo );
 	const double r1 = R + 1.0;
@@ -1220,42 +1221,71 @@ double sigmaFromSpread( double spread )
 }
 
 /// One frame's edge against the model: the spread measured from the picture
-/// and the model's, with its bound. False while projector B's shutter is
-/// not open (the edge's step would not be the card's).
+/// and the model's, with its bound; and the level either side, which a
+/// normalised kernel leaves alone. False while projector p's shutter is not
+/// open (the edge's step would not be the card's).
 struct SpreadFrame
 {
 	Spread s;
 	double expect = 0.0, err = 0.0, tol = 0.0;
+	double level  = 0.0;///< the plateaus: the worst ratio of error to tolerance
+	double levelErr = 0.0, levelTol = 0.0;
 	bool atFloor  = false;
 };
 
-bool spreadFrame( const Lockstep& l, MixRig& rig, SpreadFrame& f )
+bool spreadFrame( const Lockstep& l, MixRig& rig, SpreadFrame& f, int p )
 {
 	const int W = rig.out.width, H = rig.out.height;
 	const ref::Out e  = l.expect();
 	const ref::Out e4 = l.simRk4.now( W );
-	if( e.shutter[ 1 ] < 1.0 )
+	if( e.shutter[ p ] < 1.0 )
 		return false;
-	f.s         = measureSpread( rig.PixelsF(), W, H );
-	const int R = radiusFor( std::max( e.sigma[ 1 ], e4.sigma[ 1 ] ) );
+	const ImageF img = rig.PixelsF();
+	f.s              = measureSpread( img, W, H );
+	const int R      = radiusFor( std::max( e.sigma[ p ], e4.sigma[ p ] ) );
 	//The model's sigma and its method error, measured; plus the two
 	//implementations' rounding of the heat (kImplementationBound is far
 	//above it), as pixels.
-	f.expect            = kernelSpread( e.sigma[ 1 ] );
-	const double method = 3.0 * std::fabs( f.expect - kernelSpread( e4.sigma[ 1 ] ) ) + kImplementationBound * W;
-	f.tol               = spreadBound( std::max( f.s.sigma, f.expect ), e.g[ 1 ][ 1 ], f.s.mean, R ) + method;
+	f.expect            = kernelSpread( e.sigma[ p ] );
+	const double method = 3.0 * std::fabs( f.expect - kernelSpread( e4.sigma[ p ] ) ) + kImplementationBound * W;
+	f.tol               = spreadBound( std::max( f.s.sigma, f.expect ), e.g[ p ][ 1 ], f.s.mean, R, p ) + method;
 	f.err               = std::fabs( f.s.sigma - f.expect );
 	//At the 0.17 px floor either side is right if the method error reaches
 	//it.
-	const double raw = l.ctl.glass ? 0.0 : l.ctl.popMm * W / ( 4.0 * 2.8 * 36.0 ) * std::fabs( 1.0 - e.heat[ 1 ] );
-	f.atFloor        = !l.ctl.glass && std::fabs( raw - 0.17 ) <= 3.0 * std::fabs( e.sigma[ 1 ] - e4.sigma[ 1 ] ) + kImplementationBound * W;
+	const double raw = l.ctl.glass ? 0.0 : l.ctl.popMm * W / ( 4.0 * 2.8 * 36.0 ) * std::fabs( 1.0 - e.heat[ p ] );
+	f.atFloor        = !l.ctl.glass && std::fabs( raw - 0.17 ) <= 3.0 * std::fabs( e.sigma[ p ] - e4.sigma[ p ] ) + kImplementationBound * W;
 	if( f.atFloor )
 		f.err = std::min( f.err, std::fabs( f.s.sigma - kernelSpread( raw >= 0.17 ? 0.0 : 0.17 ) ) );
+	//The plateaus: every pixel of the middle row more than R + 1 from the
+	//step, each side, is the unblurred level g t to the output's bound and
+	//the gain's model bound. A kernel that has lost a tap, or whose weights
+	//do not sum to 1, moves every one of them by that tap's weight.
+	const Rgb* edge = p == 1 ? kEdgeB : kEdgeA;
+	const int y     = H / 2;
+	f.level         = 0.0;
+	for( int x = W / 4; x < 3 * W / 4; ++x )
+	{
+		if( x >= W / 2 - R - 2 && x <= W / 2 + R + 1 )
+			continue;
+		const double t     = srgbToLinear( edge[ x >= W / 2 ? 1 : 0 ].g / 255.0 );
+		const double light = e.g[ p ][ 1 ] * t;
+		const double want  = linearToSrgb( light );
+		const double got   = img[ at4( W, x, y ) + 1 ];
+		const double tol   = 3.0 * ( outputBound( light, R, true ) + encodeSlope( std::max( light, 1e-12 ) ) * t * modelBound( l, p, 1 ) );
+		const double r     = std::fabs( got - want ) / tol;
+		if( std::isnan( r ) || r > f.level )
+		{
+			f.levelErr = std::fabs( got - want );
+			f.levelTol = tol;
+		}
+		f.level = worse( f.level, r );
+	}
 	return true;
 }
 
 void popCheck( int W, int H, int fault, bool print = false )
 {
+	for( int p = 0; p < 2; ++p )
 	for( int glass = 0; glass < 2; ++glass )
 	{
 		MixRig rig;
@@ -1265,10 +1295,15 @@ void popCheck( int W, int H, int fault, bool print = false )
 		rig.UploadA( edgeCard( W, H, false ) );
 		rig.UploadB( edgeCard( W, H, true ) );
 		Lockstep l( rig );
+		//Projector p lit at rated, the other dark: its slide alone on the
+		//screen.
+		l.set( "Opacity", static_cast< float >( p ) );
 		l.set( "Pop", 1.0f );
 		l.set( "Mounts", static_cast< float >( glass ) );
+		const char* change = p == 1 ? "Change B" : "Change A";
 		const int pressAt = 5, secondAt = 540, frames = 640;
 		double worst = 0.0, wErr = 0.0, wTol = 0.0, maxSigma = 0.0, sharpAfter = -1.0;
+		double level = 0.0, lErr = 0.0, lTol = 0.0;
 		int measured = 0, straddled = 0;
 		//For tau: ( t, ln sigma, its bound ) while the drift is a pure
 		//exponential -- the cycle over, the lamp at rated, before the second
@@ -1282,13 +1317,19 @@ void popCheck( int W, int H, int fault, bool print = false )
 		for( int k = 0; k < frames; ++k )
 		{
 			if( k == pressAt || ( k == secondAt && !glass ) )
-				l.press( "Change B" );
+				l.press( change );
 			if( !l.frame() )
 				break;
 			SpreadFrame f;
-			if( !spreadFrame( l, rig, f ) )
+			if( !spreadFrame( l, rig, f, p ) )
 				continue;
 			straddled += f.atFloor;
+			if( std::isnan( f.level ) || f.level > level )
+			{
+				lErr = f.levelErr;
+				lTol = f.levelTol;
+			}
+			level = worse( level, f.level );
 			const double r = std::isnan( f.err ) ? f.err : f.err / f.tol;
 			if( std::isnan( r ) || r > worst )
 			{
@@ -1302,16 +1343,17 @@ void popCheck( int W, int H, int fault, bool print = false )
 			//change whose edge is a step again.
 			if( !glass && k > pressAt + 60 && k < secondAt && sharpAfter < 0.0 && f.s.sigma == 0.0 )
 				sharpAfter = rig.SecondsOf( k ) - rig.SecondsOf( pressAt + 60 );
-			if( !glass && k > pressAt + 60 && k < secondAt && l.expect().sigma[ 1 ] >= 0.5 )
+			if( !glass && k > pressAt + 60 && k < secondAt && l.expect().sigma[ p ] >= 0.5 )
 			{
 				const double sigma = sigmaFromSpread( f.s.sigma );
 				const double slope = ( kernelSpread( sigma + 1e-6 ) - kernelSpread( sigma - 1e-6 ) ) / 2e-6;
 				fit.push_back( { rig.SecondsOf( k ), std::log( sigma ), f.tol / slope / sigma } );
 			}
 		}
-		const std::string what = glass ? "Glass, Pop 1 mm: " : "Card, Pop 1 mm: ";
+		const std::string what = std::string( p == 1 ? "B, " : "A, " ) + ( glass ? "Glass, Pop 1 mm: " : "Card, Pop 1 mm: " );
 		Check( measured > 100 && worst <= 1.0, what + fmt( "%.0f frames with the shutter open, the edge's spread from the picture is the model's (worst %.2g px against %.2g)",
 		                                                   measured, wErr, wTol ) );
+		Check( measured > 100 && level <= 1.0, what + fmt( "and the level either side of the edge is the unblurred g t: the kernel keeps its mass (worst %.2g against %.2g)", lErr, lTol ) );
 		if( glass )
 		{
 			Check( maxSigma == 0.0, what + fmt( "the edge never spreads (largest second moment %.3g px)", maxSigma ) );
@@ -1355,7 +1397,9 @@ int runPop()
 {
 	std::printf( "the pop: a cold card-mounted slide out of focus, drifting in as it warms\n" );
 	atBothRasters( []( int w, int h, int f ) { popCheck( w, h, f, f == kFaultNone ); },
-	               { { kFaultPopNoReset, "the slide's heat kept across a change" }, { kFaultPopTau, "the drift's time constant 1 s" } } );
+	               { { kFaultPopNoReset, "the slide's heat kept across a change" },
+	                 { kFaultPopTau, "the drift's time constant 1 s" },
+	                 { kFaultKernelMass, "the Gaussian's outermost taps zeroed" } } );
 	return failures == 0 ? 0 : 1;
 }
 
@@ -1596,7 +1640,7 @@ void resizeDriftCheck( int W, int H, int fault )
 	Lockstep l( rig );
 	l.set( "Pop", 1.0f );
 	const int ow = W == 640 ? 320 : 640, oh = W == 640 ? 180 : 360;
-	double worst = 0.0, wErr = 0.0, wTol = 0.0;
+	double worst = 0.0, wErr = 0.0, wTol = 0.0, level = 0.0;
 	int measured = 0, blurredAfter = 0;
 	for( int k = 0; k < 300; ++k )
 	{
@@ -1614,7 +1658,7 @@ void resizeDriftCheck( int W, int H, int fault )
 		if( !l.frame() )
 			break;
 		SpreadFrame f;
-		if( !spreadFrame( l, rig, f ) )
+		if( !spreadFrame( l, rig, f, 1 ) )
 			continue;
 		const double r = std::isnan( f.err ) ? f.err : f.err / f.tol;
 		if( std::isnan( r ) || r > worst )
@@ -1623,12 +1667,14 @@ void resizeDriftCheck( int W, int H, int fault )
 			wTol = f.tol;
 		}
 		worst = worse( worst, r );
+		level = worse( level, f.level );
 		++measured;
 		blurredAfter += k >= 120 && f.s.sigma > 0.0;
 	}
 	Check( measured > 200 && blurredAfter > 30 && worst <= 1.0,
 	       fmt( "B's slide drifting into focus, resized at frame 120 to %.0fx%.0f and back at 200: every frame's spread is the model's (worst %.2g px against %.2g)", ow, oh,
 	            wErr, wTol ) );
+	Check( measured > 200 && level <= 1.0, fmt( "  and every frame's level either side of the edge is the unblurred one (worst %.3g of its tolerance)", level ) );
 }
 
 int runResize()
