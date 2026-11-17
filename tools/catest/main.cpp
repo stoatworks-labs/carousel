@@ -2004,9 +2004,16 @@ std::map< std::string, Track > loadScript( const std::string& path, std::string&
 		if( hash != std::string::npos )
 			line.erase( hash );
 		std::istringstream in( line );
-		int frame = 0;
-		if( !( in >> frame ) )
-			continue;
+		std::string first;
+		if( !( in >> first ) )
+			continue;// blank, or a comment: nothing else is skipped
+		char* frameEnd   = nullptr;
+		const long frame = std::strtol( first.c_str(), &frameEnd, 10 );
+		if( frameEnd == first.c_str() || *frameEnd != '\0' || frame < 0 || frame > std::numeric_limits< int >::max() )
+		{
+			error = path + ":" + std::to_string( lineNumber ) + ": '" + first + "' is not a frame number (a whole number, 0 or more)";
+			return {};
+		}
 		std::vector< std::string > words;
 		std::string word;
 		while( in >> word )
@@ -2018,16 +2025,16 @@ std::map< std::string, Track > loadScript( const std::string& path, std::string&
 		}
 		char* end         = nullptr;
 		const float value = std::strtof( words.back().c_str(), &end );
-		if( end == nullptr || *end != '\0' )
+		if( end == nullptr || *end != '\0' || !std::isfinite( value ) )
 		{
-			error = path + ":" + std::to_string( lineNumber ) + ": '" + words.back() + "' is not a number";
+			error = path + ":" + std::to_string( lineNumber ) + ": '" + words.back() + "' is not a finite number";
 			return {};
 		}
 		words.pop_back();
 		std::string name = words.front();
 		for( size_t i = 1; i < words.size(); ++i )
 			name += " " + words[ i ];
-		tracks[ name ].emplace_back( frame, value );
+		tracks[ name ].emplace_back( static_cast< int >( frame ), value );
 	}
 	for( auto& entry : tracks )
 		std::sort( entry.second.begin(), entry.second.end() );

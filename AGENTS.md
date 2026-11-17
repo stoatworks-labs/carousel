@@ -145,6 +145,20 @@ normalised half-kernel (CPU-computed weights, at most 48 taps each side), and dr
   binary before each mutant, and requires a GLSL mutant's text in the binary.
 - **oxbow is an effect host**: it hands a mixer one input, so its `selftest` must fail on
   frame 0, and verify requires exactly "FF_PROCESS_OPENGL failed on frame 0".
+- **verify.sh's cue check forgot the lag it sits next to.** It wanted Opacity keyed at
+  frame 1 to dim A at frame 1 and Lamp keyed at frame 4 to show at 4; the picture showed
+  each one frame later, which is the plugin's design (the lamps integrate to frame N's
+  instant with the drive as it was; `--cut` holds the frame at the cut bitwise to the one
+  before). The check now wants frames 0 and 1 bitwise equal then dimming from 2, and
+  frames 0-4 bitwise equal then a step at 5: a cue applied a frame early or late fails it.
+  Shifting the keys by hand (the step to 3 or 5, the ramp to 1..9, Opacity held to 8) is
+  refused each time; that was run once by hand, not in verify.
+- **The cue parser skipped what it couldn't read.** A line whose first word wasn't a whole
+  number was dropped as if blank, so `Lamp 1` (no frame) ran with exit 0, as did a negative
+  frame and a NaN or infinite value. Found while building that negative control (a zsh loop
+  that didn't word-split wrote frameless cues, and catest took them). Only blank and comment
+  lines are skipped now; verify feeds seven malformed lines, each exit 2, and a sheet of
+  comments and blank lines, exit 0. The old binary took four of the seven.
 
 ## Verified, and assumed
 

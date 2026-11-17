@@ -244,17 +244,21 @@ else
 	fail "2.5 frames in gave $got bytes (want $(( FRAME * 2 ))), exit $status"
 fi
 # A standard parameter ramps between keys. Time 0 makes the drive follow the
-# fader at once, so only the lamps' lag stands between a cue and the picture:
-# Opacity keyed 0 at frame 0 and 1 at frame 8 has A dimming from frame 1 if
-# it ramps; a STEPPED Opacity would hold frames 0-7 identical.
+# fader at once. A cue keyed at frame N reaches the plugin before frame N
+# renders, but the lamps integrate up to frame N's instant with the drive as
+# it was, so it first shows at N + 1 (the lag --cut holds bitwise). Opacity
+# keyed 0 at frame 0 and 1 at frame 8 holds frame 1 bitwise frame 0, then A
+# dims from frame 2 if it ramps; a STEPPED Opacity would hold frames 0-8
+# identical, and a cue a frame early would dim frame 1.
 frames 10 200 200 200 255 > "$tmp/grey10.rgba"
 frames 10 0 0 0 255 > "$tmp/black10.rgba"
 printf '0 Opacity 0\n8 Opacity 1\n' > "$tmp/ramp.txt"
 status=0
 "$CATEST" --pipe --size ${W}x${H} --set Time=0 --pipe-src "$tmp/black10.rgba" --script "$tmp/ramp.txt" < "$tmp/grey10.rgba" > "$tmp/ramp.rgba" 2>/dev/null || status=$?
-# An option steps: Lamp keyed High at 0 and Low at 4 holds frames 0-3 at rest
-# (identical), then A's lamp cools: 3 differs from 4, and 4 is brighter than
-# 5. A RAMPED Lamp would be 0.5 at frame 2.
+# An option steps: Lamp keyed High at 0 and Low at 4 holds frames 0-4 at rest
+# (identical, the same lag), then A's lamp cools: 4 differs from 5, and 4 is
+# brighter than 5. A RAMPED Lamp would round to Low by frame 2 or 3, and a cue
+# a frame late would hold frame 5 too.
 printf '0 Lamp 0\n4 Lamp 1\n' > "$tmp/step.txt"
 s2=0
 "$CATEST" --pipe --size ${W}x${H} --set Opacity=0 --pipe-src "$tmp/black10.rgba" --script "$tmp/step.txt" < "$tmp/grey10.rgba" > "$tmp/step.rgba" 2>/dev/null || s2=$?
@@ -269,19 +273,34 @@ if len( r ) != 10 or len( s ) != 10:
 	print( f"bad {len( r )} and {len( s )} frames" ); sys.exit()
 mean = lambda f: sum( f[ 0::4 ] ) / ( size / 4 )
 mr, ms = [ mean( f ) for f in r ], [ mean( f ) for f in s ]
-ramp = mr[ 0 ] > mr[ 1 ] > mr[ 2 ] > mr[ 3 ]
-step = s[ 0 ] == s[ 1 ] == s[ 2 ] == s[ 3 ] and s[ 3 ] != s[ 4 ] and ms[ 4 ] > ms[ 5 ]
+ramp = r[ 0 ] == r[ 1 ] and mr[ 1 ] > mr[ 2 ] > mr[ 3 ] > mr[ 4 ]
+step = s[ 0 ] == s[ 1 ] == s[ 2 ] == s[ 3 ] == s[ 4 ] and s[ 4 ] != s[ 5 ] and ms[ 4 ] > ms[ 5 ]
 print( ( "ok " if ramp and step else "bad " ) + "ramp " + " ".join( f"{v:.1f}" for v in mr[ :5 ] ) + "; step " + " ".join( f"{v:.1f}" for v in ms[ :6 ] ) )
 PY
 )
 case "$status:$s2:$verdict" in
-	0:0:ok*) pass "cues: Opacity ramps, Lamp steps (mean red, ${verdict#ok })" ;;
-	*) fail "cues gave exits $status and $s2, '${verdict#bad }': want A dimming from frame 1, and frames 0-3 equal then a step at 4" ;;
+	0:0:ok*) pass "cues: Opacity ramps, Lamp steps, each first showing one frame after its key (mean red, ${verdict#ok })" ;;
+	*) fail "cues gave exits $status and $s2, '${verdict#bad }': want frame 1 bitwise frame 0 then A dimming from 2, and frames 0-4 bitwise equal then a step at 5" ;;
 esac
-printf '0 No Such Control 0.5\n' > "$tmp/bad.txt"
+# Every malformed line is refused, none skipped: no such parameter, no frame,
+# a negative or fractional frame, no value, a value that is not finite. A
+# sheet of comments and blank lines around one good cue is taken.
+bad_sheets=( '0 No Such Control 0.5' 'Lamp 1' '-1 Lamp 1' '2.5 Lamp 1' '4 Opacity' '4 Opacity nan' '4 Opacity inf' )
+refused=0; took=""
+for sheet in "${bad_sheets[@]}"; do
+	printf '%s\n' "$sheet" > "$tmp/bad.txt"
+	status=0
+	"$CATEST" --pipe --size ${W}x${H} --script "$tmp/bad.txt" < "$tmp/amber3.rgba" >/dev/null 2>&1 || status=$?
+	if [ "$status" -eq 2 ]; then refused=$(( refused + 1 )); else took="$took '$sheet' ($status)"; fi
+done
+printf '# a comment\n\n   \n0 Opacity 0.5   # and a trailing one\n' > "$tmp/good.txt"
 status=0
-"$CATEST" --pipe --size ${W}x${H} --script "$tmp/bad.txt" < "$tmp/amber3.rgba" >/dev/null 2>&1 || status=$?
-[ "$status" -eq 2 ] && pass "a cue naming no parameter is refused (exit 2)" || fail "a cue naming no parameter gave exit $status, not 2"
+"$CATEST" --pipe --size ${W}x${H} --script "$tmp/good.txt" < "$tmp/amber3.rgba" >/dev/null 2>&1 || status=$?
+if [ "$refused" -eq "${#bad_sheets[@]}" ] && [ "$status" -eq 0 ]; then
+	pass "all ${#bad_sheets[@]} malformed cue lines refused (exit 2: no such parameter, no frame, a negative or fractional frame, no value, NaN, inf); comments and blank lines taken"
+else
+	fail "malformed cues: $refused of ${#bad_sheets[@]} refused; taken:${took:- none}; comments and blank lines gave exit $status"
+fi
 status=0
 "$CATEST" --out "$tmp/x.png" --size ${W}x${H} --set "Curve=Bogus" >/dev/null 2>&1 || status=$?
 s2=0

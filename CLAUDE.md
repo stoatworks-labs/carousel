@@ -42,7 +42,10 @@ built" section says where the code departs from it.
   synthetic clock (default 60).
 - Cue sheets for `--out` and `--pipe`: `--script cues`, `frame Name value` per line; standard
   parameters ramp between keys, options and buttons step (a button keyed 1 then 0 is a
-  press); a bad line exits 2.
+  press); `#` starts a comment; any other line that isn't `frame Name value` (a whole frame,
+  0 or more, and a finite value) exits 2. A cue keyed at frame N first shows at frame N + 1:
+  the lamps integrate up to frame N's instant with the drive as it was (the lag `--cut`
+  measures).
 - Render cost: `./build/catest --bench` (720p, 1080p and 4K: one lit, both lit, both
   blurred at Pop 1 mm).
 
