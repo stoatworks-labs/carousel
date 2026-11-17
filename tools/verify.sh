@@ -160,10 +160,13 @@ CATEST="$BUILD/catest"
 step "checks (this Mac's GPU, 640x360 and 320x180)"
 #---------------------------------------------------------------------------
 # Every claim the README makes. Each GL check runs at both rasters itself and
-# carries its own negative controls; --names needs no GL.
+# carries its own negative controls; --names needs no GL. Each check's whole
+# output is kept in the logs folder, gpu-<check>.txt and software-<check>.txt.
 CHECKS="names mixer unchanged lamp colour dissolve cut change pop alpha linear resize rates clock mutation"
 for check in $CHECKS; do
-	if out=$( limit 1200 "$CATEST" --$check 2>&1 ); then
+	out=$( limit 1200 "$CATEST" --$check 2>&1 ); status=$?
+	printf '%s\n' "$out" > "$LOGS/gpu-$check.txt"
+	if [ "$status" -eq 0 ]; then
 		n=$( printf '%s\n' "$out" | /usr/bin/grep -c '^  ok' )
 		neg=$( printf '%s\n' "$out" | /usr/bin/grep -c '^  ok    negative control' )
 		negatives=$(( negatives + neg ))
@@ -182,7 +185,9 @@ step "software renderer (both rasters)"
 # bit-identical under load.
 for check in $CHECKS; do
 	[ "$check" = names ] && continue
-	if out=$( CATEST_RENDERER=software limit 3600 "$CATEST" --$check 2>&1 ); then
+	out=$( CATEST_RENDERER=software limit 3600 "$CATEST" --$check 2>&1 ); status=$?
+	printf '%s\n' "$out" > "$LOGS/software-$check.txt"
+	if [ "$status" -eq 0 ]; then
 		pass "catest --$check (software): $( printf '%s\n' "$out" | /usr/bin/grep -c '^  ok' ) assertions"
 	else
 		printf '%s\n' "$out" | /usr/bin/grep -E 'FAIL' | sed 's/^/      /'
@@ -413,7 +418,9 @@ step "clips"
 #---------------------------------------------------------------------------
 # Resolume's own demo clips, through --pipe: Pop's default is still what the
 # spec's rule measures, and the alpha path ignores colour under transparency.
-if out=$( python3 -I tools/clips.py --build "$BUILD" --pop --alpha --check 2>&1 ); then
+out=$( python3 -I tools/clips.py --build "$BUILD" --pop --alpha --check 2>&1 ); status=$?
+printf '%s\n' "$out" > "$LOGS/clips.txt"
+if [ "$status" -eq 0 ]; then
 	pass "$( printf '%s\n' "$out" | /usr/bin/grep -E 'median over' | sed 's/^ *//' ); declared the same"
 	printf '%s\n' "$out" | /usr/bin/grep -E 'changes nothing' | sed 's/^ */   /'
 else
@@ -424,7 +431,7 @@ fi
 #---------------------------------------------------------------------------
 step "bench"
 #---------------------------------------------------------------------------
-"$CATEST" --bench --frames 30 2>&1 | sed 's/^/   /'
+"$CATEST" --bench --frames 30 2>&1 | tee "$LOGS/bench.txt" | sed 's/^/   /'
 
 printf '\n'
 if [ "$failures" -eq 0 ]; then
