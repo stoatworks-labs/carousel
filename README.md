@@ -187,10 +187,16 @@ plugin's own log, two layers added on top of a composition and removed afterward
 
 ### Measured offline, on macOS
 
-`tools/verify.sh` passes on this machine (Apple M4 Max, macOS 26.4.1) against a fresh
-universal Release build (17 November 2026), ending `verify: all 60 checks passed (45 negative
-controls; …)`. It runs every picture check at **two rasters**,
-640×360 and 320×180, on the GPU and all of them again on **Apple's software renderer**. Every
+`tools/verify.sh` passes on this machine (Apple M4 Max, macOS 26.4.1). It runs every picture
+check at **two rasters**, 640×360 and 320×180, on the GPU and all of them again on **Apple's
+software renderer**, which takes hours. The full run, against a fresh universal Release build
+of this source before its About block was generated (17 November 2026), ended `verify: all 60
+checks passed (45 negative controls; …)`. On the released tree (18 November 2026), against a
+fresh universal Release build, every step but the software renderer's passed again, ending
+`verify: all 47 checks passed (45 negative controls; …)`: the 60 less the 14 software-renderer
+checks, plus the browser demo's. Of those 14, `--mixer`, `--unchanged` and `--lamp` were re-run
+on the released tree and passed. Nothing that draws changed between the two runs: the
+generated About block added the user guide's button, the 15th parameter. Every
 tolerance is derived from something stated (GLSL 4.10's `pow` budget, a counted number of
 float roundings, the plugin's integration error measured against a tighter integrator), not
 fitted to the GPU; `AGENTS.md` lists them. Figures are 640×360 on the GPU unless said.
@@ -210,7 +216,7 @@ fitted to the GPU; `AGENTS.md` lists them. Figures are 640×360 on the GPU unles
 | `--resize` | output and inputs resized mid-dissolve and mid-drift and back: every frame follows the unresized model (closest 3.7e-7 against 3.45e-5) |
 | `--rates` | a cut, a change and a 1.3 s dissolve at 24, 59.94, 60 and 144 fps, every frame against continuous time (closest 2.43e-7 against 5.51e-6, at 60 fps; at 144 fps 6.6e-7 against 4.5e-5) |
 | `--clock` | the same run from host clocks of 0, 4.1e6 ms, 4.99e8 ms (5.8 days), 3.2e10 ms (a year) and 4.99e5 s, declared or voted: every frame within tolerance (closest 3.4e-7 against 2.9e-5); the vote settles on ms or s |
-| `--names` | 14 parameters within FFGL's 16 bytes, unique, About last; index 0 Linear Light, on; Opacity a standard parameter; Take and the changes are buttons |
+| `--names` | 15 parameters within FFGL's 16 bytes, unique, About last; index 0 Linear Light, on; Opacity a standard parameter; Take and the changes are buttons |
 | `--pipe` | 3 frames in, 3 out; at Opacity 0, Dest back byte for byte; at 1, Src; the shorter input ends the run; a partial frame is dropped; cues ramp Opacity and step Lamp, each first showing one frame after its key (the lag `--cut` measures); every malformed cue line (no frame, a negative one, no value, NaN) and every bad `--set` exits 2; a closed stdout (`\| head -c 1`) exits 1, not 141 |
 | negative controls | **19** deliberately wrong versions built into the real plugin (resistance fixed, radiation linear in T, no thermal lag, no white balance, the colour never warming, the dissolve per frame, Time 0 as a ramp, a 60-frame shutter, the slide's heat kept across a change, the kernel losing its outer taps, resampling on straight colour, a float clock, a resize resetting the lamps, and more), each run against every check it should fail, 22 pairings, at both rasters: all caught; and one mutated shader through the shader hook |
 | mutation | **35** one-character mutants of the shipped GLSL and C++, **35** caught |
