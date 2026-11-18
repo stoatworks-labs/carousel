@@ -322,8 +322,9 @@ focus (the exact branch); **both lit** the Light midpoint, glass (two fetches, d
 added); **both blurred** both lit and both slides just changed at Pop 1 mm, the worst case.
 Figures are in the README, from verify's run. 4K both blurred is the one that costs: at Pop
 1 mm a freshly changed 4K slide's σ is up to 9.5 px by the formula, R = 39 taps each side,
-two passes, two projectors.
-Not looked into further.
+two passes, two projectors: 7.9 ms in the final verify run (47% of a 60 fps frame), 8.1 ms
+in the one before. Not looked into further: a cheaper blur (a downsampled pass, or a
+box-cascade) is an open question.
 
 **Blur memory**, by arithmetic, not measured: each projector's buffer is RGBA32F at the
 output's size, 16 bytes a pixel: 14.7 MB at 720p, 33.2 MB at 1080p, 132.7 MB at 4K, two of

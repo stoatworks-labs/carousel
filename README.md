@@ -106,7 +106,8 @@ user guide yet, no OpenFX port and no browser demo.
 ### Measured offline, on macOS
 
 `tools/verify.sh` passes on this machine (Apple M4 Max, macOS 26.4.1) against a fresh
-universal Release build (17 November 2026). It runs every picture check at **two rasters**,
+universal Release build (17 November 2026), ending `verify: all 60 checks passed (45 negative
+controls; …)`. It runs every picture check at **two rasters**,
 640×360 and 320×180, on the GPU and all of them again on **Apple's software renderer**. Every
 tolerance is derived from something stated (GLSL 4.10's `pow` budget, a counted number of
 float roundings, the plugin's integration error measured against a tighter integrator), not
@@ -114,8 +115,7 @@ fitted to the GPU; `AGENTS.md` lists them. Figures are 640×360 on the GPU unles
 
 | check | result |
 | --- | --- |
-| `--lamp` | a cut to A, then a 2 s dissolve back to B: both projectors' gains, every channel, every frame of 300, against the harness's ODE, each within its tolerance; the closest
-frame **2.43e-7** against 5.51e-6. From the picture at 1 ms frames, A heats from 700 K to 90% of its light in 0.4163 s and B cools to 10% in 0.1684 s (Levi's rule of thumb: 0.372 and 0.174 s; printed, not asserted) |
+| `--lamp` | a cut to A, then a 2 s dissolve back to B: both projectors' gains, every channel, every frame of 300, against the harness's ODE, each within its tolerance; the closest frame **2.43e-7** against 5.51e-6. From the picture at 1 ms frames, A heats from 700 K to 90% of its light in 0.4163 s and B cools to 10% in 0.1684 s (Levi's rule of thumb: 0.372 and 0.174 s; printed, not asserted) |
 | `--colour` | the colour temperature recovered from the picture's gains at 8 voltages and on Low is the filament's to **0.00054 K** (tolerance 0.25 K, the gains' bound carried through the locus inversion); warmer at every step down; Low at 3160.3 K |
 | `--dissolve` | a 2 s Voltage dissolve at 48 fps, every frame, closest 5.6e-7 against 4.28e-5. The middle sags to **0.1139** of one lamp's light (model 0.1139, tolerance 1.6e-5) at 2457 K. A 1.5 s dissolve fits a 1.5 s ramp and misses a 0.9× or 1.1× one by thousands of times the tolerance. Light curve at the midpoint: the two lamps sum to 1.0000002 of one lamp's (tolerance 6.1e-5), at 3077 K |
 | `--cut` | Time 0, High and Low, 8-bit and float: the frame at the cut is the frame before it, **0** values different; the next 60 frames follow the ODE from a step at the cut's instant (closest 2.43e-7 against 5.51e-6) |
@@ -126,7 +126,7 @@ frame **2.43e-7** against 5.51e-6. From the picture at 1 ms frames, A heats from
 | `--linear` | the band both projectors light is g_A τ_A + g_B τ_B, in light with Linear Light on and in code values with it off, to 0.002 and 0.005 of the tolerance |
 | `--mixer` | null, zero and one input, null or zero-sized inputs and a zero viewport each return FF_FAIL and leave the plugin working; Dest 200×120 of 256×256 and Src 96×70 of 128×128, padded in magenta: **0** bytes differ from green padding over 130 frames, in focus and blurred; each projector at 0.6 and 1.37 of the output is the bilinear resample, worst 0.06 of its tolerance; the host's textures, framebuffer and viewport are back |
 | `--resize` | output and inputs resized mid-dissolve and mid-drift and back: every frame follows the unresized model (closest 3.7e-7 against 3.45e-5) |
-| `--rates` | a cut, a change and a 1.3 s dissolve at 24, 59.94, 60 and 144 fps, every frame against continuous time (closest 6.6e-7 against 4.5e-5, at 144 fps) |
+| `--rates` | a cut, a change and a 1.3 s dissolve at 24, 59.94, 60 and 144 fps, every frame against continuous time (closest 2.43e-7 against 5.51e-6, at 60 fps; at 144 fps 6.6e-7 against 4.5e-5) |
 | `--clock` | the same run from host clocks of 0, 4.1e6 ms, 4.99e8 ms (5.8 days), 3.2e10 ms (a year) and 4.99e5 s, declared or voted: every frame within tolerance (closest 3.4e-7 against 2.9e-5); the vote settles on ms or s |
 | `--names` | 14 parameters within FFGL's 16 bytes, unique, About last; index 0 Linear Light, on; Opacity a standard parameter; Take and the changes are buttons |
 | `--pipe` | 3 frames in, 3 out; at Opacity 0, Dest back byte for byte; at 1, Src; the shorter input ends the run; a partial frame is dropped; cues ramp Opacity and step Lamp, each first showing one frame after its key (the lag `--cut` measures); every malformed cue line (no frame, a negative one, no value, NaN) and every bad `--set` exits 2; a closed stdout (`\| head -c 1`) exits 1, not 141 |
@@ -138,17 +138,20 @@ frame **2.43e-7** against 5.51e-6. From the picture at 1 ms frames, A heats from
 | the bundle | universal (`x86_64 arm64`), exports `plugMain`, ad-hoc signs; `oxbow` reads its name, id, type, inputs and parameter 0 |
 
 **Render cost.** Wall-clock with `glFinish` either side, the mean of 30 frames after 60 of
-warm-up, both inputs at the output's size, from verify's run on 17 November 2026 on an M4 Max:
+warm-up, both inputs at the output's size, 8-bit, from the verify run started on 17 November 2026,
+on the M4 Max:
 
 | | 720p | 1080p | 4K |
 | --- | --- | --- | --- |
-| one lit (one projector at rated, in focus) | BENCH | BENCH | BENCH |
-| both lit (the Light midpoint, glass) | BENCH | BENCH | BENCH |
-| both blurred (both slides just changed, Pop 1 mm) | BENCH | BENCH | BENCH |
+| one lit (one projector at rated, in focus) | 0.027 ms | 0.026 ms | 0.043 ms |
+| both lit (the Light midpoint, glass) | 0.035 ms | 0.028 ms | 0.048 ms |
+| both blurred (both slides just changed, Pop 1 mm) | 0.411 ms (2.5% of a 60 fps frame) | 1.058 ms (6.3%) | 7.865 ms (47.2%) |
 
-The blur is what costs, and only for the seconds after a change while a slide is out of
-focus; at the default Pop 0.55 mm the kernels are about half as long. macOS figures only, on
-one GPU.
+The verify run before it, the same evening, gave 0.600, 1.128 and 8.083 ms for both blurred:
+these are wall-clock means, good to tens of percent at 720p, not a benchmark. The blur is what
+costs, and only for the seconds after a change while a slide is out of focus; at the default
+Pop 0.55 mm the kernels are about half as long (σ scales with Pop; not timed). macOS figures
+only, on one GPU.
 
 ### Not established
 
