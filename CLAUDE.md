@@ -122,7 +122,26 @@ built" section says where the code departs from it.
 
 ## Not done yet
 - Never loaded in Resolume (either platform); never built on Windows.
-- No user guide, no OpenFX port, no browser demo, no presets, no still mode.
+- No user guide, no OpenFX port, no presets, no still mode.
+
+## Browser demo
+- `demo/` is served at https://carousel-demo.stoatworks-labs.com/ by the Worker in
+  `wrangler.toml` (a route, plus a proxied AAAA `100::` record for `carousel-demo`: delete the
+  record and the page goes dark while deploys stay green). `.github/workflows/deploy.yml`
+  redeploys it on every push to main; by hand: `cf-run npx wrangler deploy`.
+- **`demo/carousel-core.{js,wasm}` is the plugin's C++, compiled and committed.** After ANY
+  change under `source/` (the generated `StoatworksAbout*.h` and `Cmf.h` included), run
+  `demo/tools/build-wasm.sh` (emscripten's `em++`) and commit both outputs and
+  `demo/wasm/inputs.sha256`; `tools/verify.sh` fails until you do.
+- `demo/shaders.js` is a copy: after changing a shader, `python3 demo/tools/check_shaders.py
+  --write`. The same script checks the kit's ES port (only the version line and the
+  precisions) and the .wasm's input hashes.
+- `python3 demo/tools/crosscheck/crosscheck.py --catest <build>/catest` renders 480 frames in
+  the page (headless Chrome, GPU) and through `catest --pipe` and compares them; by hand, not
+  in verify (AGENTS.md, "The browser demo").
+- Nothing on the page may press Take or Change by itself: rapid cuts at a short Time flash
+  (the note at the top of `demo/index.html`).
+- `demo/vendor/` is the shared kit (`stoatworks-backend/resolume-demo`); never edit it.
 
 ## Diagnostics
 

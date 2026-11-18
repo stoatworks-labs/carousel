@@ -332,6 +332,92 @@ box-cascade) is an open question.
 output's size, 16 bytes a pixel: 14.7 MB at 720p, 33.2 MB at 1080p, 132.7 MB at 4K, two of
 them once both slides have been out of focus. Made on first use, kept until `DeInitGL`.
 
+## The browser demo (2026-11-18)
+
+https://carousel-demo.stoatworks-labs.com/, from `demo/`, deployed by `wrangler.toml` (a Worker
+route: the zone is at Cloudflare's 100 custom domains, so `carousel-demo` needs a proxied AAAA
+`100::` record made through the API before the first deploy) and
+`.github/workflows/deploy.yml` on every push to main. The fleet's first WebAssembly mixer.
+
+- **It runs the plugin, it doesn't port it.** `demo/carousel-core.wasm` is `Carousel.cpp` and
+  everything it calls (Controls, Lamp, Colour with `Cmf.h`, Clock, Model, BlurBuffer, Diag,
+  Shaders) plus the FFGL SDK's plugin classes, CFFGLPluginInfo, FFGLLog, FFGLShader,
+  FFGLScreenQuad and the scoped bindings, compiled unmodified by emscripten 6.0.5
+  (`demo/tools/build-wasm.sh`, nipkow's and fountain's pattern). Left out: `MixerEntry.cpp`
+  (the build stamp). The lamps' ODE, the dissolve, the shutters, the slides' heat, the Planck
+  sum and the Gaussian's weights are that C++, in double; nothing of the CPU half is ported.
+- **The CIE table is in the .wasm.** `Cmf.h` (CIE 1931 2°, © CIE, CC BY-SA 4.0) is compiled
+  in, so the deployed page distributes it. The page's disclosure says so in its own item,
+  beside the attribution; the README's demo section points at License.
+- **What is the page's**: `demo/wasm/glue.cpp` plays the host as catest's MixRig does (two
+  inputs, Dest = inputTextures[0]; FF_RESIZE when the composition changes; the declarations
+  read back through the SDK's host getters; `ca_convert` / `ca_param_from` are Controls.cpp's
+  conversions for the read-outs and the presets; `ca_instant` is `InstantForTest()` and
+  `ClockForTest().Scale()` for the line under the picture; `ca_clock_scale_for_test` is for
+  the crosscheck only). `demo/wasm/gl_shim.cpp` takes four calls: glShaderSource (the check
+  and the port) and glEnable, glDisable and glIsEnabled for GL_PROGRAM_POINT_SIZE, which
+  WebGL2 lacks. Nipkow's glTexImage2D and glReadPixels shims aren't needed: BlurBuffer's
+  `GL_RGBA32F, GL_RGBA, GL_FLOAT, NULL` is already the ES pair, and nothing is read back. The
+  blur buffers need EXT_color_buffer_float; without it the page stops and says why.
+- **The ES port** is the kit's port(), checked at load and in verify
+  (`demo/tools/check_shaders.py`): the version line (and the blank line after it) and the
+  highp defaults, nothing else. Carousel's GLSL has no `precise` and no `float[](`.
+- **Two inputs, both the page's.** Slide A is the kit's clip picker renamed (its "Use my
+  own…" also sets the composition to the picture's size); Slide B is a second
+  `SourceRenderer` with its own file button, kept at its own size so the plugin resamples it.
+  Inputs are unpadded (Width = HardwareWidth): the `--mixer` padding path is never exercised.
+  The kit's clips are premultiplied and the plugin takes straight alpha: every clip offered is
+  opaque (the kit's `alpha` clip is left off), and a picture of your own with transparency
+  comes out darker at its soft edges (rgb × a²). The page says all of it.
+- **The tray ("Next slide on Change") is the page's.** A Change press arms it when the
+  plugin's last instant says that projector isn't cycling (a press the plugin will ignore arms
+  nothing); it moves that projector's picture to the next on the page's list on the first
+  frame the plugin's shutter reads 0, and disarms if the cycle ends first. A picture of your
+  own stays put. `?tray=0` starts with it off.
+- **Buttons** send 1 then 0 in one go (fountain's). The plugin latches the rising edge in
+  SetFloatParameter, so a press and release between two frames still lands on the next frame.
+- **The clock** is the kit's seconds, capped at 0.1 s a frame. The plugin's vote settles
+  seconds within four frames (the line under the picture says which). Pause gives dt 0: the
+  projectors freeze, and a press waits for Play. Restart is a backward jump, which the clock
+  turns into dt 0: the projectors carry on, they are not reset.
+- **Trap: the log opens in the constructor** (`diag::init()` in `Carousel()`), and the page
+  constructs an instance to read the declarations, so `ca_prepare_log()` (which sets
+  `CAROUSEL_LOG_DIR` in the page's memory file system) has to run before that. Run later, the
+  log quietly lands at `/home/web_user/.local/state/carousel/logs`.
+- **Not reproducible to the byte**: Diag.cpp's first line carries `__DATE__ __TIME__`, so each
+  build-wasm.sh run writes a different .wasm. The manifest records whichever was built.
+- **Flash safety, the page's side.** Carousel doesn't flash on its own: a Change on the lit
+  projector is one dark gap (about 0.9 s of its 1 s cycle) and a press mid-cycle is ignored,
+  so at most one dark gap a second a projector, two alternating A and B. Cutting does: Take or
+  the fader at Time 0–0.1 s faster than about five cuts a second crosses three flashes a
+  second (white against black at Time 0: 5 cuts/s is 3 flashes/s, 6 is 3.5, 10 is 5.5, 30 is
+  15; Resolume's NoHopeJustFear_44 against Cyberspace_09 at Time 0 crosses at 6 cuts/s); at
+  Time 0.25 s or more even 10 presses a second stayed under (the release brief's figures,
+  measured on the plugin's output, 2026-11-18). So: a short note at the top of the page (no
+  Start gate: nothing flashes unless a visitor makes it), a caution line under the picture
+  whenever Time is under 0.25 s, and **nothing on the page presses Take or Change by itself**
+  (no URL parameter presses one either). The defaults stay the plugin's.
+- **Checked on the page** (headless Chrome, GPU through ANGLE on Metal, 960×540, no console
+  errors or warnings): all four stage compilations accepted; B lit at load, A dark at 700 K;
+  Opacity 1 → 0 a 2.1 s Voltage dissolve; held at 0.5, Voltage, each lamp at 2475 K and 0.064
+  of its light (held still, so not the moving dissolve's 0.1139), and Light, each at u 0.818,
+  3077 K, the two summing to 1.000 of one lamp; Lamp Low 3160 K; Take dissolving over Time;
+  Change B on the lit projector at Pop 1 mm: shut from about 0.1 s to 0.95 s with the canvas
+  pure black, then the next picture (the tray) open at σ 2.38 px, 1.67 px at 2 s, 0.61 px at
+  5 s, in focus by 9 s; a second Change A mid-cycle ignored; the caution under 0.25 s.
+- **Against catest** (`demo/tools/crosscheck/crosscheck.py --catest <build>/catest`, needs
+  Chrome and a GPU, not in verify): the page's table of controls equals `catest --list`, and
+  480 frames at 320×180 (Src 240×135 with a band at alpha 128, Pop 1 mm; a Voltage dissolve, a
+  change on the lit projector and an ignored second press, a Light dissolve, a cut at Time 0,
+  Lamp Low, Linear Light off, a change on the dark projector, the fader at Time 0) came out
+  **identical to the byte**, every frame (M4 Max, Chrome's WebGL2 on Metal against GL 4.1,
+  18 November 2026). Negative controls caught: Change A a frame late (worst 113 levels), Time
+  one slider step off (worst 3 levels, 3.3% of pixels identical). Other browsers, GPUs and
+  compositions were not compared.
+- **Rebuild after any change under `source/`**, the generated `StoatworksAbout*.h` and
+  `Cmf.h` included: `demo/tools/build-wasm.sh`, then commit both outputs and
+  `demo/wasm/inputs.sha256`; verify's "browser demo" step fails until you do.
+
 ## Open questions
 
 - **Still mode.** The gate shows the input live. Holding the frame at each slide change

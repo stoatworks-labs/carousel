@@ -94,6 +94,20 @@ live: a "slide" is whatever the clip is doing.
 black film, whatever colour sits under it, through resampling and blur alike. The output is
 opaque: a screen is lit, not transparent.
 
+## Browser demo
+
+[carousel-demo.stoatworks-labs.com](https://carousel-demo.stoatworks-labs.com/) runs the
+plugin in your browser: its own C++ (the plugin class, the two lamps and the dissolve in
+double, the shutters, the slides and its clock), compiled unmodified to WebAssembly and
+drawing with its own GLSL in WebGL2, with two generated pictures, or pictures of your own,
+as projectors A and B. The page is the host: Opacity is a slider rather than the layer's
+fader, Take and the changes are buttons, and moving a projector on to its next picture
+during a change is the page's, labelled as such. Rendered through the same 480 frames as
+`catest`, every frame came out identical to the byte (Chrome on an M4 Max). It needs 32-bit
+float render targets (`EXT_color_buffer_float`) and stops without them. The CIE table
+compiled into it is CC BY-SA 4.0, not MIT ([License](#license)). It is a demo, not the
+plugin, and the page lists what it leaves out.
+
 ## Status
 
 **v0.1.0, 17 November 2026, unreleased, and early days.** It has **never been loaded into

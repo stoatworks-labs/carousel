@@ -10,6 +10,11 @@
 #   shaders       do the three shaders (the vertex shader, the blur and the
 #                 screen pass) compile through a real GLSL compiler
 #                 (tools/glslc.sh). REQUIRED: a skipped compile is not a pass.
+#   browser demo  is demo/shaders.js still source/Shaders.cpp to the
+#                 character, does the kit's port() change only the version
+#                 line and the precisions, and was demo/carousel-core.wasm
+#                 built from the sources as they are now
+#                 (demo/tools/check_shaders.py)
 #   build         a fresh universal Release build, which is what would ship;
 #                 no warning in this repo's own code
 #   checks        the plugin's claims, each measured at TWO rasters (640x360
@@ -99,8 +104,7 @@ else
 	fail "a GLSL reserved word is declared as an identifier, or M_PI is used"
 fi
 # Built-ins that arrived in GLSL 4.00 / ES 3.10: they compile everywhere here
-# but not in WebGL2, where the fleet's browser demos run the shaders unedited.
-# Carousel has no demo; the rule is kept so one can be made.
+# but not in WebGL2, where the browser demo (demo/) runs the shaders unedited.
 if /usr/bin/grep -nE '(^|[^A-Za-z_])(findMSB|findLSB|bitCount|bitfieldExtract|bitfieldInsert|bitfieldReverse|uaddCarry|usubBorrow|umulExtended|imulExtended|frexp|ldexp|fma|textureGather|textureQueryLevels|packUnorm4x8|unpackUnorm4x8)[[:space:]]*\(' source/Shaders.cpp | /usr/bin/grep -vE '^[0-9]+:[[:space:]]*//' >"$LOGS/webgl.txt"; then
 	sed 's/^/   /' "$LOGS/webgl.txt"
 	fail "a built-in GLSL ES 3.00 lacks is in the GLSL"
@@ -128,6 +132,23 @@ if GLSLC_REQUIRED=1 tools/glslc.sh >"$LOGS/glslc.txt" 2>&1; then
 else
 	sed 's/^/   /' "$LOGS/glslc.txt" | /usr/bin/head -20
 	fail "a shader does not compile, or glslc is missing (brew install shaderc)"
+fi
+
+#---------------------------------------------------------------------------
+# The page runs the plugin: its C++ as committed WebAssembly, and its own copy
+# of the GLSL. A shader edited here and not spliced across, or a source file
+# changed without rebuilding the .wasm, would leave it drawing something else
+# and saying it is the plugin. Rebuilding needs emscripten, which this script
+# cannot assume, so the check reads the build's manifest of input hashes.
+# demo/tools/crosscheck/ compares the page's pictures with catest's, and needs
+# Chrome and a GPU, so it is run by hand (AGENTS.md).
+#---------------------------------------------------------------------------
+step "browser demo"
+if python3 demo/tools/check_shaders.py >"$LOGS/demo.log" 2>&1; then
+	pass "demo/shaders.js is source/Shaders.cpp, the port changes only the version line and the precisions, and the .wasm is built from these sources"
+else
+	sed 's/^/   /' "$LOGS/demo.log"
+	fail "the demo's copies have drifted from the plugin's: rerun demo/tools/check_shaders.py --write, or demo/tools/build-wasm.sh for the .wasm"
 fi
 
 #---------------------------------------------------------------------------
