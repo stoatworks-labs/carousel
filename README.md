@@ -34,6 +34,38 @@ card-mounted slide drifting into focus as it warms.
 > line broadcast and WCAG guidance draw. Flashing like that can trigger seizures in people with
 > photosensitive epilepsy. See [Flashing](#flashing).
 
+<!-- downloads:start -->
+
+## Download
+
+**[v0.1.0](https://github.com/stoatworks-labs/carousel/releases/tag/v0.1.0)** — prebuilt for macOS and Windows. Pick your platform:
+
+<details>
+<summary><b>macOS</b> — Universal (Apple Silicon + Intel)</summary>
+
+| Build | Download | Size |
+| --- | --- | --- |
+| Universal (Apple Silicon + Intel) · .dmg disk image | [`carousel-0.1.0-macos-universal.dmg`](https://github.com/stoatworks-labs/carousel/releases/download/v0.1.0/carousel-0.1.0-macos-universal.dmg) | 252 KB |
+| Universal (Apple Silicon + Intel) · .zip archive | [`carousel-macos-universal.zip`](https://github.com/stoatworks-labs/carousel/releases/latest/download/carousel-macos-universal.zip) | 210 KB |
+
+</details>
+
+<details>
+<summary><b>Windows</b> — x64</summary>
+
+| Build | Download | Size |
+| --- | --- | --- |
+| x64 · .exe installer | [`carousel-0.1.0-windows-x86_64-setup.exe`](https://github.com/stoatworks-labs/carousel/releases/download/v0.1.0/carousel-0.1.0-windows-x86_64-setup.exe) | 263 KB |
+| x64 · .zip archive | [`carousel-windows-x86_64.zip`](https://github.com/stoatworks-labs/carousel/releases/latest/download/carousel-windows-x86_64.zip) | 133 KB |
+
+</details>
+
+All builds, checksums and release notes: [github.com/stoatworks-labs/carousel/releases](https://github.com/stoatworks-labs/carousel/releases).
+
+macOS builds are signed and notarised and open normally. The Windows builds are unsigned, so SmartScreen warns once.
+
+<!-- downloads:end -->
+
 ## The one idea
 
 **Each projector's light is its lamp's filament temperature, and the filament follows the
