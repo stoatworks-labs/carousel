@@ -5,11 +5,11 @@ Why the code is the way it is. `CLAUDE.md` is the command reference; the design 
 departs from it. Built 2026-11-17 from the spec in `~/dev/carousel`; public as `stoatworks-labs/carousel` from
 2026-11-18.
 
-Status, 2026-11-18: v0.1.0, released. Loaded in Resolume Arena 7.29.0 on this Mac over test
-stills (README, In Resolume Arena); the Windows DLL is built by CI and read back by
-`tools/wincheck.ps1`, not loaded into Arena on Windows for this release. Everything below
-that says "measured" was measured by `catest` on this Mac (Apple M4 Max, macOS 26.4.1), on
-its GPU and on Apple's software renderer, unless it says Arena.
+Status, 2026-11-18: v0.1.0, released. Loaded in Resolume Arena 7.29.0 on this Mac and in
+Arena 7.27.1 on win-lab (llvmpipe), with the release zip's DLL, over test stills (README, In
+Resolume Arena); the Windows DLL is also built by CI and read back by `tools/wincheck.ps1`.
+Everything below that says "measured" was measured by `catest` on this Mac (Apple M4 Max,
+macOS 26.4.1), on its GPU and on Apple's software renderer, unless it says Arena.
 
 ## The idea
 
@@ -433,7 +433,8 @@ route: the zone is at Cloudflare's 100 custom domains, so `carousel-demo` needs 
   opaque half matched to the code value too. So τ = decode(rgb × a) squares the alpha on
   Dest's soft edges. Released as built; the fix (take Dest as premultiplied, τ = decode(rgb))
   is a change to `--alpha` and `--unchanged` as well, and whether Src arrives premultiplied
-  is not measured.
+  is not measured. Arena 7.27.1 on win-lab (llvmpipe) gave the same snapshot to the code
+  value at both faders, so Windows Arena hands Dest premultiplied too.
 - **The default Curve.** Voltage, for the sag and the amber middle; Light is the
   period-correct shaped unit. Allan's call.
 - **The chosen shutter, τ and preheat** (0.04 / 0.5 / 0.06 s, 3 s, 700 K): no source.
@@ -451,7 +452,8 @@ route: the zone is at Cloudflare's 100 custom domains, so `carousel-demo` needs 
 - **4K both blurred** at Pop 1 mm costs a large share of a 60 fps frame (README); RGBA16F
   blur buffers or a lower tap cap would cut it and the memory; not evaluated against the
   tolerances.
-- **Windows in Arena, and a real show.** Neither has happened yet.
+- **A real show, and Windows on a GPU.** Arena on Windows has run it only on win-lab's
+  llvmpipe, over test stills; no show has run it anywhere.
 
 ## Generated files
 

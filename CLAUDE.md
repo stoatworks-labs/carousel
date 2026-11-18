@@ -125,7 +125,8 @@ built" section says where the code departs from it.
 - Home: `~/Projects/resolume/carousel`, public at `stoatworks-labs/carousel`.
 
 ## Not done yet
-- Never loaded into Arena on Windows; never through a slide show or a show.
+- Loaded into Arena on Windows only on win-lab (7.27.1, llvmpipe), over test stills; never
+  through a slide show or a show.
 - Arena hands Dest premultiplied and the plugin takes it as straight (soft edges of the layer
   below darkened twice): measured, not changed (README, Not established).
 - No OpenFX port, no presets, no still mode.

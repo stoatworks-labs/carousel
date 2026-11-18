@@ -36,10 +36,10 @@ clips NoHopeJustFear_44 and IntoTheGlow_02.*
 > is the filament's to **0.0005 K**; a cut at Time 0 leaves the frame at the cut **bit for
 > bit** the frame before it; one projector alone at rest gives its slide back unchanged.
 > Nineteen deliberately wrong versions of the plugin and thirty-five one-character sabotages
-> of its code are all caught. In **Resolume Arena 7.29.0 on a Mac** it registers as a mixer,
-> takes its dissolve from the layer's fader, and draws what the harness draws to the code
-> value; its Windows build loads as a host loads it. But that was over test stills: it hasn't
-> been through a slide show or a show yet. The lamp model, the shutter's timing and the
+> of its code are all caught. In **Resolume Arena 7.29.0 on a Mac** and **7.27.1 on Windows**
+> it registers as a mixer, takes its dissolve from the layer's fader, and draws what the
+> harness draws to the code value. But that was over test stills: it hasn't been through a
+> slide show or a show yet. The lamp model, the shutter's timing and the
 > slide's warming time are assumptions (see [Known limits](#known-limits)). **Try it on a
 > spare layer first**, and shout if anything misbehaves.
 >
@@ -309,15 +309,15 @@ nothing has been timed inside Resolume.
 ## Known limits
 
 - **Tried in Resolume on test stills only.** It loads and draws in Resolume Arena 7.29.0 on a
-  Mac; its Windows DLL loads as a host loads it, but it hasn't been loaded into Arena on
-  Windows for this release. Nobody has run a slide show, or a show, through it yet, or timed
-  it inside Resolume.
-- **The layer below's soft edges are darkened twice.** In Arena on a Mac, a half-transparent
-  white layer below came out exactly as if its colour had been multiplied by its alpha twice:
-  Arena hands the layer below premultiplied, and this version takes its inputs as straight
-  alpha. A pixel at alpha 0.5 lights as a quarter, not a half. Opaque clips, and clips
-  flattened onto black, are unaffected. Whether this layer (projector B) arrives
-  premultiplied too hasn't been measured.
+  Mac and in Arena 7.27.1 on Windows, the Windows one on Mesa's software renderer, not a
+  graphics card's driver. Nobody has run a slide show, or a show, through it yet, or timed it
+  inside Resolume.
+- **The layer below's soft edges are darkened twice.** In Arena on a Mac and on Windows, a
+  half-transparent white layer below came out exactly as if its colour had been multiplied by
+  its alpha twice: Arena hands the layer below premultiplied, and this version takes its
+  inputs as straight alpha. A pixel at alpha 0.5 lights as a quarter, not a half. Opaque
+  clips, and clips flattened onto black, are unaffected. Whether this layer (projector B)
+  arrives premultiplied too hasn't been measured.
 - **One lamp**: a 300 W EXR, on High or Low. Other projection lamps (FHS, ELH, EXY) differ by a
   few percent in lag and colour; there's no choice of them.
 - **No still mode.** The gate shows its layer live; a slide isn't a frame held at the change.

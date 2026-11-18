@@ -2,9 +2,9 @@
 
 > **AI-assisted project.** This codebase was created with [Claude](https://claude.com/claude-code)
 > (Anthropic), directed and reviewed by a human author. It has been loaded into **Resolume
-> Arena 7.29.0 on a Mac**, over test stills only, where it registers as a mixer, takes its
-> dissolve from the layer's fader and draws the lamps the harness predicts to the code value;
-> its Windows DLL is built by CI and loads as a host loads it. It hasn't been through a show.
+> Arena 7.29.0 on a Mac and 7.27.1 on Windows**, over test stills only, where it registers as
+> a mixer, takes its dissolve from the layer's fader and draws the lamps the harness predicts
+> to the code value. It hasn't been through a show.
 > Everything else below is measured by an offline harness, `catest`, that drives the real plugin class in a headless
 > GL context with two inputs, at two rasters, on this Mac's GPU and again on Apple's software
 > renderer, and reads the light straight off the plugin's float output, against the harness's
@@ -147,8 +147,8 @@ and black slides and two of Resolume's demo clips, not on every clip.
 ## Status
 
 **v0.1.0, 18 November 2026, and early days.** It has been loaded into Resolume Arena 7.29.0
-on a Mac, over test stills only (below), and its Windows DLL is built by CI and read back as a
-host reads it. It hasn't been through a show, and nothing has been timed inside Resolume.
+on a Mac and 7.27.1 on Windows, over test stills only (below). It hasn't been through a show,
+and nothing has been timed inside Resolume.
 `oxbow probe` reads the bundle as a host does (`SW Carousel` / `CA01` / **mixer**, inputs
 2..2, parameter 0 Linear Light, a standard parameter named Opacity), and `oxbow selftest`, an
 effect host that hands the plugin one input, is refused on its first frame, as a mixer must
@@ -175,13 +175,30 @@ plugin's own log, two layers added on top of a composition and removed afterward
   the fader meant the other way round (fader 1 showed projector A at full). **Change A**
   pressed over REST took projector A to black and back about a second later. A press released
   50 ms after it was sent didn't reach the plugin; held for 0.3 s it did.
-- **Arena hands Dest premultiplied.** With the layer below half white at alpha 128, its
-  transparent half came out at 35, 31, 25 at fader 0.3 and 15, 10, 4 at 0.5: exactly what
-  `catest` renders for a premultiplied Dest (straight would have been 75, 68, 57 and 38, 30,
-  17). The plugin takes its inputs as straight alpha, so a partly transparent layer below is
-  darkened twice (see Not established). Opaque clips are unaffected.
+- **Arena hands Dest premultiplied** (on Windows too, below). With the layer below half
+  white at alpha 128, its transparent half came out at 35, 31, 25 at fader 0.3 and 15, 10, 4
+  at 0.5: exactly what `catest` renders for a premultiplied Dest (straight would have been
+  75, 68, 57 and 38, 30, 17). The plugin takes its inputs as straight alpha, so a partly
+  transparent layer below is darkened twice (see Not established). Opaque clips are
+  unaffected.
 
-**On Windows**: the DLL is compiled by CI (MSVC, no warnings in this repo's code) and
+**On Windows** (Arena 7.27.1 on win-lab, Mesa's llvmpipe, no GPU, 18 November 2026), with
+the DLL from the v0.1.0 release's own zip, the same probe over REST with the plugin's log:
+
+- It registers as **SW Carousel**, `uid: CA01 category: 2`, is offered as a Blend Mode, and
+  shows 14 of its 15 parameters, Linear Light the one hidden.
+- The **layer's fader is the dissolve fader**: 0.2, 0.85, 0.5, 1 and 0.3 read back as the
+  plugin's Opacity and appear in its log at the frames they were set, and a write of 0.15 to
+  Opacity was overridden. Both inputs arrive at 1280×720 of 1280×768; Arena drew about 6
+  frames a second on the software renderer.
+- **The picture is the Mac's.** The same stills gave the same composition snapshot to the
+  code value: 155, 142, 120 and 35, 31, 25 at fader 0.3, 84, 70, 44 and 15, 10, 4 at 0.5. So
+  Arena on Windows hands Dest premultiplied too.
+- **Take** held 0.4 s at fader 0.3 dissolved to the other projector (the opaque half from
+  155, 142, 120 to 19, 10, 0, as on the Mac), and **Change A** held 0.3 s took the lit
+  projector to black and back within a second.
+
+Before that, the DLL is compiled by CI (MSVC, no warnings in this repo's code) and
 `tools/wincheck.ps1` loads it as a host does: `SW Carousel`, `CA01`, type 2 (mixer), inputs
 2 to 2, 15 parameters, Linear Light first, Opacity among them.
 
@@ -243,11 +260,10 @@ only, on one GPU.
 
 ### Not established
 
-- **Resolume, beyond test stills.** In Arena on a Mac it registers, follows the layer's fader
-  and draws what the harness draws (above), but over still test pictures only: no real slide
-  show, no show, and nothing timed inside Resolume.
-- **Windows in Arena.** The DLL builds and loads as a host loads it; it has not been loaded
-  into Arena on Windows for this release.
+- **Resolume, beyond test stills.** In Arena on a Mac and on Windows it registers, follows the
+  layer's fader and draws what the harness draws (above), but over still test pictures only:
+  no real slide show, no show, and nothing timed inside Resolume. On Windows only Mesa's
+  software renderer has run it, not a GPU driver.
 - **Alpha in the layer below is darkened twice.** Arena hands Dest premultiplied (measured,
   above), and the plugin takes its inputs as straight alpha, so where the layer below is
   partly transparent its colour comes out multiplied by its alpha twice: a pixel at alpha 0.5
