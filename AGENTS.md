@@ -2,7 +2,8 @@
 
 Why the code is the way it is. `CLAUDE.md` is the command reference; the design is
 `~/Projects/resolume/specs/SPEC-carousel.md`, whose "As built" section lists where this repo
-departs from it. Built 2026-11-17 from the spec, local only (`~/dev/carousel`, no remote).
+departs from it. Built 2026-11-17 from the spec in `~/dev/carousel`; public as `stoatworks-labs/carousel` from
+2026-11-18.
 
 Status, 2026-11-17: v0.1.0, unreleased, **never loaded into Resolume**, never built on
 Windows. Everything below that says "measured" was measured by `catest` on this Mac (Apple
@@ -102,8 +103,9 @@ normalised half-kernel (CPU-computed weights, at most 48 taps each side), and dr
   decision): the sources disagree with each other by more than the model disagrees with any
   of them. `--lamp` prints heat 700 K → 90% in 0.4163 s and cool to 10% in 0.1684 s beside
   Levi's 0.372 and 0.174 s; `--colour` prints CCT ∝ V^0.420 beside 0.376 and 0.4.
-- **No GitHub workflows.** The brief overrides the fleet template: there is no `.github/`.
-  Build, test and release locally.
+- **GitHub workflows** came with the release (2026-11-18): penumbra's `ci.yml` and
+  `release.yml`, adapted, with its `tools/wincheck.ps1`, which loads the DLL as a host would.
+  The repo is public, so they run on Actions.
 
 ## The traps actually hit
 

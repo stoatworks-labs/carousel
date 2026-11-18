@@ -112,12 +112,13 @@ built" section says where the code departs from it.
 - **macOS make compares whole-second mtimes.** mutate.sh deletes the touched objects and the
   binary before every build; never hand-mutate a source file in a shared build directory.
 - `catest`'s `fmt()` takes doubles only, at most four: never pass it a `%s` or `%d` format.
-- **No GitHub workflows** (the brief). If the repo goes to GitHub as a private repo, build
-  and release locally (the fleet's Actions quota).
+- **GitHub workflows**: `ci.yml` and `release.yml` are penumbra's, adapted; the repo is
+  public, so Actions runs. The Windows jobs run `tools/wincheck.ps1` on the DLL (a mixer,
+  CA01, 15 parameters, Linear Light first). Release by pushing a `v*` tag.
 - **Provisional hand copies:** `source/StoatworksAbout*.h` (guide = "", no user guide yet)
   and `ATTRIBUTIONS.md`. Once the project is registered in stoatworks-backend,
   `sync-about.py` and `sync-attributions.py` generate them; edit them there then.
-- Local only: `~/dev/carousel`, no remote, nothing released, not on the website.
+- Home: `~/Projects/resolume/carousel`, public at `stoatworks-labs/carousel`.
 
 ## Not done yet
 - Never loaded in Resolume (either platform); never built on Windows.

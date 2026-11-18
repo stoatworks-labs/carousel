@@ -174,7 +174,7 @@ only, on one GPU.
 ## Build
 
 macOS (universal: Apple Silicon and Intel), from a checkout with its submodule
-(`git submodule update --init --recursive`; the repository is local, with no remote yet):
+(`git submodule update --init --recursive`):
 
 ```bash
 cmake -B build -DCMAKE_BUILD_TYPE=Release
@@ -220,7 +220,10 @@ Or put two clips through it, projector A on stdin and projector B from a file:
 
 ## License
 
-MIT. See [LICENSE](LICENSE) and [ATTRIBUTIONS.md](ATTRIBUTIONS.md).
+The code is MIT: see [LICENSE](LICENSE). The CIE 1931 colour-matching functions in
+`tools/data/ciexyz31_1.csv` are the CIE's, © International Commission on Illumination, and
+they and the table the plugin is built with from them (`source/Cmf.h`) are CC BY-SA 4.0, not
+MIT: see [tools/data/README.md](tools/data/README.md) and [ATTRIBUTIONS.md](ATTRIBUTIONS.md).
 
 <!-- attributions:start -->
 This project is built on other people's work — see [ATTRIBUTIONS.md](ATTRIBUTIONS.md).
