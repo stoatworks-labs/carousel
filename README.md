@@ -1,9 +1,11 @@
 # carousel
 
 > **AI-assisted project.** This codebase was created with [Claude](https://claude.com/claude-code)
-> (Anthropic), directed and reviewed by a human author. It has **never been loaded into
-> Resolume**, on macOS or Windows, and has never been built on Windows. Everything below is
-> measured by an offline harness, `catest`, that drives the real plugin class in a headless
+> (Anthropic), directed and reviewed by a human author. It has been loaded into **Resolume
+> Arena 7.29.0 on a Mac**, over test stills only, where it registers as a mixer, takes its
+> dissolve from the layer's fader and draws the lamps the harness predicts to the code value;
+> its Windows DLL is built by CI and loads as a host loads it. It hasn't been through a show.
+> Everything else below is measured by an offline harness, `catest`, that drives the real plugin class in a headless
 > GL context with two inputs, at two rasters, on this Mac's GPU and again on Apple's software
 > renderer, and reads the light straight off the plugin's float output, against the harness's
 > **own** model of the lamps: its own filament ODE integrated by Dormand–Prince, its own
@@ -24,6 +26,13 @@ dissolve sags and turns amber in the middle, and even a cut crosses through a di
 while one filament cools and the other heats.
 Change A and Change B run a one-second slide change: the shutter's dark gap, then a cold
 card-mounted slide drifting into focus as it warms.
+
+> **Photosensitivity.** SW Carousel doesn't flash on its own: a slide change on the lit
+> projector is one dark gap, at most once a second. But it cuts as fast as you cut. Cutting
+> between contrasting slides more than about **five times a second** with Time at 0 to 0.1 s,
+> with Take or the layer's fader, crosses **three flashes a second** over the whole frame, the
+> line broadcast and WCAG guidance draw. Flashing like that can trigger seizures in people with
+> photosensitive epilepsy. See [Flashing](#flashing).
 
 ## The one idea
 
@@ -108,14 +117,73 @@ float render targets (`EXT_color_buffer_float`) and stops without them. The CIE 
 compiled into it is CC BY-SA 4.0, not MIT ([License](#license)). It is a demo, not the
 plugin, and the page lists what it leaves out.
 
+## Flashing
+
+People with photosensitive epilepsy can have a seizure from flashing light. Broadcast (Ofcom)
+and web (WCAG 2.x) guidance draws the line at **three flashes a second** over a large part of
+the picture. Measured from the plugin's own output (`catest --pipe` at 60 fps, white and black
+slides unless said), with xenon's rule: a transition is a change of at least 0.1 of white in
+mean linear luminance, its darker end below 0.8; two opposite transitions are one flash; more
+than 6 transitions in any second crosses. Counted over the whole frame and over a 5 × 5 grid
+of third-of-frame windows (the two agreed in every case).
+
+| What | Transitions in the worst second | Flashes a second |
+| --- | --- | --- |
+| Change B on the lit projector, pressed as fast as it will go (a press during a cycle is ignored), card or glass | 2 | 1 |
+| Change A and B alternating, both projectors lit (Light, fader 0.5) | 4 | 2 |
+| Take at Time 0, 1 / 2 / 3 / 4 presses a second | 2 / 3 / 4 / 5 | under the line |
+| Take at Time 0, 5 a second | 6 | 3, on the line |
+| Take at Time 0, 6 / 8 / 10 / 15 / 30 a second | 7 / 9 / 11 / 15 / 30 | **3.5 to 15: crosses** |
+| Take at Time 0.05 s or 0.1 s, 5 / 6 / 8 / 10 a second | 6 / 7 / 8 / 11 | **crosses from 6 a second** |
+| Take at Time 0.25 s or 0.5 s, any rate tried (2 to 10 a second) | 5 at most | under the line |
+| Resolume's NoHopeJustFear_44 and Cyberspace_09 as the slides, Take at Time 0, 2 / 3 / 4 / 6 a second | 3 / 4 / 5 / 7 | **crosses at 6 a second** |
+
+So SW Carousel never crosses the line by itself, and the defaults don't (Time 2 s). Cutting
+between projectors faster than about five times a second at a Time of 0.1 s or less does,
+whether by Take, by the layer's fader, or by anything mapped to them. At Time 0 the fader
+drives the lamps directly, so throwing it from end to end is a cut. This was measured on the harness's white
+and black slides and two of Resolume's demo clips, not on every clip.
+
 ## Status
 
-**v0.1.0, 17 November 2026, unreleased, and early days.** It has **never been loaded into
-Resolume** on either platform and never been built on Windows. `oxbow probe` reads the
-bundle as a host does (`SW Carousel` / `CA01` / **mixer**, inputs 2..2, parameter 0 Linear
-Light, a standard parameter named Opacity), and `oxbow selftest`, an effect host that hands
-the plugin one input, is refused on its first frame, as a mixer must refuse it. There's no
-user guide yet, no OpenFX port and no browser demo.
+**v0.1.0, 18 November 2026, and early days.** It has been loaded into Resolume Arena 7.29.0
+on a Mac, over test stills only (below), and its Windows DLL is built by CI and read back as a
+host reads it. It hasn't been through a show, and nothing has been timed inside Resolume.
+`oxbow probe` reads the bundle as a host does (`SW Carousel` / `CA01` / **mixer**, inputs
+2..2, parameter 0 Linear Light, a standard parameter named Opacity), and `oxbow selftest`, an
+effect host that hands the plugin one input, is refused on its first frame, as a mixer must
+refuse it. There's a [user guide](docs/USER-GUIDE.md) and a [browser demo](#browser-demo),
+but no presets, no OpenFX port and no still mode.
+
+### In Resolume Arena
+
+**On a Mac** (Arena 7.29.0, Apple M4 Max, 18 November 2026), over Arena's REST API with the
+plugin's own log, two layers added on top of a composition and removed afterwards:
+
+- Arena loads the bundle and registers **SW Carousel** as a mixer (`uid: CA01 category: 2`),
+  in the layer's Blend Mode list. It shows 14 of the 15 parameters: everything but Linear
+  Light, which Arena hides on every mixer.
+- The **layer's fader is the dissolve fader**: set to 0.2, 0.85, 0.5, 1 and 0.3, the
+  plugin's Opacity read back the same each time, and a write of 0.15 straight to Opacity was
+  overridden by the fader (it read 0.3). Both inputs arrive at 1920×1080 of 1920×1088, and
+  Arena drew about 118 frames a second.
+- **The picture is the harness's.** With an opaque white slide on projector A and black on B,
+  Arena's composition snapshot read 155, 142, 120 at fader 0.3 and 84, 70, 44 at 0.5 (mean
+  red, green, blue over the slide): what `catest` renders for the same inputs, to the code
+  value. That is the lamp dimmed and warmed, in Arena.
+- **Take** pressed over REST dissolved to the other projector over about 1.3 s, and after it
+  the fader meant the other way round (fader 1 showed projector A at full). **Change A**
+  pressed over REST took projector A to black and back about a second later. A press released
+  50 ms after it was sent didn't reach the plugin; held for 0.3 s it did.
+- **Arena hands Dest premultiplied.** With the layer below half white at alpha 128, its
+  transparent half came out at 35, 31, 25 at fader 0.3 and 15, 10, 4 at 0.5: exactly what
+  `catest` renders for a premultiplied Dest (straight would have been 75, 68, 57 and 38, 30,
+  17). The plugin takes its inputs as straight alpha, so a partly transparent layer below is
+  darkened twice (see Not established). Opaque clips are unaffected.
+
+**On Windows**: the DLL is compiled by CI (MSVC, no warnings in this repo's code) and
+`tools/wincheck.ps1` loads it as a host does: `SW Carousel`, `CA01`, type 2 (mixer), inputs
+2 to 2, 15 parameters, Linear Light first, Opacity among them.
 
 ### Measured offline, on macOS
 
@@ -169,10 +237,16 @@ only, on one GPU.
 
 ### Not established
 
-- **Resolume.** Never loaded, on either platform. That Arena hides a mixer's first parameter
-  and binds `Opacity` to the layer fader was measured on five other mixers (genlock, wipe,
-  relay, lenticular, pepper), not on this one.
-- **Windows.** Never built.
+- **Resolume, beyond test stills.** In Arena on a Mac it registers, follows the layer's fader
+  and draws what the harness draws (above), but over still test pictures only: no real slide
+  show, no show, and nothing timed inside Resolume.
+- **Windows in Arena.** The DLL builds and loads as a host loads it; it has not been loaded
+  into Arena on Windows for this release.
+- **Alpha in the layer below is darkened twice.** Arena hands Dest premultiplied (measured,
+  above), and the plugin takes its inputs as straight alpha, so where the layer below is
+  partly transparent its colour comes out multiplied by its alpha twice: a pixel at alpha 0.5
+  lights as a quarter, not a half. Opaque clips, and clips flattened onto black, are exactly
+  right. Whether Src (this layer) also arrives premultiplied is not measured.
 - **The lamp model** is a grey body with a textbook filament (filament's model, sized for an
   EXR). Its exponents fall within the sources' spread and its lag near Levi's rule of thumb;
   those comparisons are printed, not asserted, because the sources disagree with each other.
@@ -180,9 +254,14 @@ only, on one GPU.
   3 s warming time and the 700 K preheat. No source gives them.
 - **The pop is uniform across the frame**: no bow profile, no autofocus. A dimmed lamp's
   slide is cooler and stays a little out of focus while the dissolve is held mid-way.
-- **Inputs are taken as straight alpha.** Whether Arena hands Dest premultiplied is not
-  measured.
-- **The slide is live**: the gate shows the clip, not a frame held at the change.
+- **One lamp type**: a 300 W EXR on High or Low. No other lamp, no xenon, no LED.
+- **No still mode**: the gate shows its layer live; there is no frame held at the change.
+- **The default Curve is Voltage**, the plain rheostat, because the sag is the idea; a shaped
+  dissolve unit is one click away (Light).
+- **The 4K worst case**: both slides just changed at Pop 1 mm costs 7.9 ms a frame at 4K on
+  the M4 Max (47% of a 60 fps frame), for the seconds the slides are out of focus. The two
+  blur buffers are RGBA32F at the output's size, so at 4K they hold about 265 MB of GPU
+  memory between them (arithmetic, not measured).
 - **Other GPUs.** Run on one Apple GPU and Apple's software renderer only.
 
 ## Build
@@ -203,10 +282,11 @@ cmake --install build
 ```
 
 The last one copies `Carousel.bundle` into `~/Documents/Resolume Arena/Extra Effects`.
-Restart Arena and it should be in a layer's Blend Mode list as **SW Carousel**, where the
-fleet's other mixers are (this one has never been loaded).
+Restart Arena and it's in a layer's Blend Mode list as **SW Carousel**, where the fleet's
+other mixers are.
 
-Windows needs Visual Studio 2022 and vcpkg (for GLEW). It has never been built there.
+Windows needs Visual Studio 2022 and vcpkg (for GLEW); CI builds it
+(`.github/workflows/ci.yml`), and `tools/wincheck.ps1` loads the DLL as a host would.
 
 ## Building and testing
 

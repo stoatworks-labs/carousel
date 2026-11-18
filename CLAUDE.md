@@ -5,7 +5,7 @@ Two Kodak slide projectors on a dissolve unit, for Resolume Arena/Avenue, as one
 300 W tungsten filament following the dissolve unit's voltage through its thermal lag
 (filament's ODE, RK4 on the CPU in double); a slide change is a 1 s shutter cycle; a
 card-mounted slide drifts into focus as it warms. C++/GLSL, CMake MODULE → universal
-`.bundle` (macOS) + Windows `.dll` (never built). MIT.
+`.bundle` (macOS) + Windows `.dll` (built by CI). MIT (the CIE table: CC BY-SA 4.0).
 
 | id | display name | bundle | type | inputs |
 | --- | --- | --- | --- | --- |
@@ -23,8 +23,9 @@ built" section says where the code departs from it.
 - Fast dev build: add `-DCMAKE_OSX_ARCHITECTURES=arm64` (iteration builds here are arm64,
   in `build-arm64`)
 - Build: `cmake --build build -j8`
-- Install to Resolume: `cmake --install build` (into Arena's Extra Effects). **Not run on
-  this machine**: the plugin has never been loaded into Resolume.
+- Install to Resolume: `cmake --install build` (into Arena's Extra Effects). Loaded in Arena
+  7.29.0 on this Mac on 2026-11-18 over test stills (README, In Resolume Arena). Allan's
+  Arena loads from that folder: take a test bundle out again afterwards.
 - Render offline: `./build/catest --out /tmp/carousel.png` (the `slide` cards as Dest and
   Src, on the defaults); `--frames N --fps F` renders N frames and writes the last
 - Inputs: `--input-a NAME` (Dest) and `--input-b NAME` (Src), each one of `slide slide-alpha
@@ -124,8 +125,10 @@ built" section says where the code departs from it.
 - Home: `~/Projects/resolume/carousel`, public at `stoatworks-labs/carousel`.
 
 ## Not done yet
-- Never loaded in Resolume (either platform); never built on Windows.
-- No user guide, no OpenFX port, no presets, no still mode.
+- Never loaded into Arena on Windows; never through a slide show or a show.
+- Arena hands Dest premultiplied and the plugin takes it as straight (soft edges of the layer
+  below darkened twice): measured, not changed (README, Not established).
+- No OpenFX port, no presets, no still mode.
 
 ## Browser demo
 - `demo/` is served at https://carousel-demo.stoatworks-labs.com/ by the Worker in
