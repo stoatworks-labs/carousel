@@ -445,10 +445,14 @@ route: the zone is at Cloudflare's 100 custom domains, so `carousel-demo` needs 
   tolerances.
 - **Never in Resolume, never on Windows.**
 
-## Provisional copies
+## Generated files
 
-`source/StoatworksAbout.h`, `StoatworksAboutLinks.h`, `StoatworksAboutParams.h` and
-`ATTRIBUTIONS.md` are hand copies written on 2026-11-17, adapted from penumbra's, with
-`guide` = "" (there is no user guide). Carousel is not registered in stoatworks-backend, so
-`sync-about.py` and `sync-attributions.py` have never run on it; once it is, they overwrite
-these files and edits belong there.
+Carousel was registered with the fleet on 2026-11-18. `source/StoatworksAbout.h` is
+`sync-about.py`'s (stoatworks-backend), from the website's projects.json: with a guide
+listed it carries the guide's URL, and the About block grows a User guide button, so the
+plugin declares 15 parameters (wincheck in both workflows expects 15).
+`StoatworksAboutLinks.h` and `StoatworksAboutParams.h` are the fleet's, unchanged.
+`ATTRIBUTIONS.md` is `sync-attributions.py`'s, from `attributions/derived.json`, which keeps
+the CIE colour-matching functions under CC BY-SA 4.0. `.github/FUNDING.yml` and the issue
+forms (the plugin variant, asking for the log at Diag.cpp's paths) are the fleet's too. Edit
+any of them in stoatworks-backend, not here.

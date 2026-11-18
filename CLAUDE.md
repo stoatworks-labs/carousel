@@ -115,9 +115,12 @@ built" section says where the code departs from it.
 - **GitHub workflows**: `ci.yml` and `release.yml` are penumbra's, adapted; the repo is
   public, so Actions runs. The Windows jobs run `tools/wincheck.ps1` on the DLL (a mixer,
   CA01, 15 parameters, Linear Light first). Release by pushing a `v*` tag.
-- **Provisional hand copies:** `source/StoatworksAbout*.h` (guide = "", no user guide yet)
-  and `ATTRIBUTIONS.md`. Once the project is registered in stoatworks-backend,
-  `sync-about.py` and `sync-attributions.py` generate them; edit them there then.
+- **Generated, never edited here:** `source/StoatworksAbout.h` (stoatworks-backend's
+  `sync-about.py`, from the website's projects.json: the hook, the page, the guide), the
+  About block's User guide button with it (15 parameters), `ATTRIBUTIONS.md`
+  (`sync-attributions.py`, from `attributions/derived.json`), `.github/FUNDING.yml` and the
+  issue forms. Registered 2026-11-18. After a sync that touches `StoatworksAbout*.h`, re-run
+  `demo/tools/build-wasm.sh`, or verify's demo check fails on a stale wasm.
 - Home: `~/Projects/resolume/carousel`, public at `stoatworks-labs/carousel`.
 
 ## Not done yet
