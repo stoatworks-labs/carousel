@@ -66,6 +66,15 @@ macOS builds are signed and notarised and open normally. The Windows builds are 
 
 <!-- downloads:end -->
 
+## Video
+
+> **Photosensitivity warning:** this mixer doesn't flash on its own, but it cuts as fast as you
+> cut: cutting between contrasting slides more than about five times a second, with Time at 0 to
+> 0.1 s, flashes more than three times a second. Large-area flashes in the video are kept to three
+> a second or fewer.
+
+[![Carousel: two slide projectors on a dissolve unit, for Resolume](docs/video-thumb.png)](https://www.youtube.com/watch?v=o_1ix8V0q_E)
+
 ## The one idea
 
 **Each projector's light is its lamp's filament temperature, and the filament follows the
